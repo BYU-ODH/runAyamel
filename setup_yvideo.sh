@@ -1,9 +1,9 @@
 #/usr/bin/env bash
 
 default=""
-force_clone=""
 attach=""
 remove=""
+restart_service=""
 full_remove=""
 build=""
 recreate="--no-recreate"
@@ -119,10 +119,6 @@ options () {
         then
             default="true"
 
-        elif [[ "$opt" = "--force-clone" ]] || [[ "$opt" = "-f" ]];
-        then
-            force_clone="true"
-
         elif [[ "$opt" = "--dev" ]] || [[ "$opt" = "-d" ]];
         then
             template_file="template.dev.yml"
@@ -185,6 +181,10 @@ options () {
         then
             remove=true
 
+        elif [[ "$opt" = "--restart" ]] || [[ "$opt" = "-rs" ]];
+        then
+            restart_service=true
+
         elif [[ "$opt" = "-frd" ]];
         then
             full_remove=true
@@ -242,6 +242,16 @@ remove_containers () {
 
 prune_docker () {
     sudo docker system prune -af
+}
+
+# $1 is the service name
+stop_start_service() {
+    if [[ -z "$1" ]]; then
+        echo "[ERROR]: No service provided."
+        exit 1
+    fi
+    sudo docker stop "$project_name"_$1"_1"
+    sudo docker start "$project_name"_$1"_1"
 }
 
 docker_compose_down () {
@@ -409,7 +419,7 @@ configure_server () {
     # this is required for the dockerfile to run.
     # If we want to run the default config as a fallback, then we would
     # have to change the server dockerfile.
-    # It will break the way it is written right now if this file is missing
+    # The server docker image will fail to build if this file is missing
     if [[ -f "$YVIDEO_HTTPD_CONFIG" ]]; then
         cp "$YVIDEO_HTTPD_CONFIG" server/httpd.conf
     else
@@ -548,6 +558,7 @@ run_docker_compose () {
 
 cd "$scriptpath"
 options "$@"
+[[ -n "$restart_service" ]] && stop_start_service "$service" && exit "$exit_code"
 [[ -n "$remove" ]] && remove_containers
 [[ -n "$clean" ]]                 && cleanup
 [[ -n "$full_remove" ]] && [[ -n "$compose_override_file" ]] && echo "Running docker-compose down" && docker_compose_down

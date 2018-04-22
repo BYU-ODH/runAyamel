@@ -4,7 +4,7 @@ services:
     yvideo_dev:
         depends_on:
          - database
-         - lamp
+         - server
         build:
             context: dev/yvideo
             args:
@@ -35,15 +35,18 @@ services:
          - "9005:9000"
         command: ["sbt", "${dev_command}"]
 
-    lamp:
-        image: tutum/lamp:latest
+    server:
+        build:
+            context: server
+            dockerfile: Dockerfile
+        image: server
         ports:
          - "80:80"
         volumes:
-         - ${Ayamel_js}:/app/Ayamel.js
-         - ${subtitle_timeline_editor}:/app/subtitle-timeline-editor
-         - ${TimedText}:/app/TimedText
-         - ${EditorWidgets}:/app/EditorWidgets
+         - ${Ayamel_js}:/usr/local/apache2/htdocs/Ayamel.js
+         - ${subtitle_timeline_editor}:/usr/local/apache2/htdocs/subtitle-timeline-editor
+         - ${TimedText}:/usr/local/apache2/htdocs/TimedText
+         - ${EditorWidgets}:/usr/local/apache2/htdocs/EditorWidgets
 
     database:
         volumes:
@@ -51,6 +54,6 @@ services:
 
 volumes:
     yvideo:
-    lamp:
+    server:
     database:
 

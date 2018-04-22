@@ -1,11 +1,12 @@
-application.conf
 Ayamel
-DictionaryLookup
 Ayamel.js
 subtitle-timeline-editor
 TimedText
 EditorWidgets
 docker-compose.dev.yml
-docker-compose.production.yml
 docker-compose.beta.yml
+docker-compose.production.yml
 *.sql
+*.crt
+*.key
+*.conf

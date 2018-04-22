@@ -3,12 +3,13 @@ version: '3'
 services:
     yvideo_beta:
         depends_on:
-         - lamp
+         - server
          - database
         build:
             context: beta/yvideo
             args:
                 sbt_version: 0.13.8
+                sites_available: ${SITES_FOLDER_NAME}
             dockerfile: Dockerfile
         image: yvideo_beta
         ports:
@@ -33,8 +34,12 @@ services:
         volumes:
          - ${YVIDEO_SQL_DATA}:/var/lib/mysql
 
-    lamp:
-        build: lamp
+    server:
+        build: server
         ports:
          - "80:80"
+         - "443:443"
+
+volumes:
+    database:
 

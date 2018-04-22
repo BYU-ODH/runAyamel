@@ -1,21 +1,24 @@
-#/bin/bash
+#/usr/bin/env bash
 
 default=""
-force_clone=""
 attach=""
 remove=""
+restart_service=""
 full_remove=""
 build=""
+recreate="--no-recreate"
+no_deps=""
 clean=""
 setup_only=""
 super_duper_clean=""
 travis=""
 test_local=""
 ayamel_dir=""
-project_name="runayamel"
+project_name="yvideo"
 git_dir=${GITDIR:-~/Documents/GitHub}
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
 service=""
+rebuild_service=""
 compose_override_file=""
 dev_compose_file="docker-compose.dev.yml"
 beta_compose_file="docker-compose.beta.yml"
@@ -38,46 +41,48 @@ remotes=("${ayamel_remote[@]}" "${dependencies_remotes[@]}" "${ylex_remote[@]}")
 usage () {
     echo 'Optional Params:'
     echo
-    echo '  [--default          | -e]    Accept the default repository locations '
-    echo "                               Used for: ${!repos[@]}"
-    echo '                               (default is $GITDIR or ~/Documents/GitHub for everything)'
-    echo '                               Only used with --test and --dev'
-    echo '  [--help             | -h]    Show this dialog'
-    echo '  [--attach           | -a]    Attach to the yvideo container after starting it'
-    echo '                               The containers will be run in the background unless attach is specified'
-    echo "  [--remove           | -r]    Removes all of the containers that start with the project prefix: $project_name"
-    echo '                               Containers are removed before anything else is done.'
-    echo '  [ -frd| -frb| -frp| -frt]    Removes everything in the docker-compose project using the corresponding compose override file and docker-compose down.'
-    echo '  [--clean            | -c]    Remove all of the created files in the runAyamel directory.'
-    echo '                               Cleanup is run before any other setup.'
-    echo '                               This option can be used without one of the required params.'
-    echo '                               If specified twice, cleanup will be called before and after setup.'
-    echo '  [--setup-only           ]    Will set up all of the specified services but will not run docker-compose.'
-    echo "                               Mainly for development and testing of $project_name"
-    echo '  [--build                ]    Will rebuild images even if they have not changed.'
-    echo '                               Passes --no-deps --build $service to `docker-compose up`'
-    echo '                               The way docker-compose responds to --build means that volumes are not deleted.'
-    echo '                               This is good but also bad because we want a full reset of the image.'
-    echo '                               So if you made changes to volumes that you need reflected in the images,'
-    echo '                               then you should delete the images and containers beforehand to ensure everything is up to date.'
-    echo '  [--build-with-deps  |-bd]    Will rebuild images even if they have not changed.'
-    echo '                               Passes --build $service to `docker-compose up`'
-    echo "                               Differs from --build in that it will also rebuild the service's dependencies."
-    echo '  [--force-recreate   | -x]    Will recreate the containers even if they are up to date.'
-    echo '                               Good for use with --build because docker does not check the code changes in the build image and'
-    echo '                               will therefore not recreate the container.'
-    echo '                               Passes --force-recreate to `docker-compose up`'
+    echo '          [--default          | -e]    Accept the default repository locations '
+    echo "                                       Used for: ${!repos[@]}"
+    echo '                                       (default is $GITDIR or ~/Documents/GitHub for everything)'
+    echo '                                       Only used with --test and --dev'
+    echo '          [--help             | -h]    Show this dialog'
+    echo '          [--attach           | -a]    Attach to the yvideo container after starting it'
+    echo '                                       The containers will be run in the background unless attach is specified'
+    echo "          [--remove           | -r]    Removes all of the containers that start with the project prefix: $project_name"
+    echo '                                       Containers are removed before anything else is done.'
+    echo '          [ -frd |-frb |-frp |-frt]    Removes everything in the docker-compose project using the corresponding compose override file and docker-compose down.'
+    echo '          [--clean            | -c]    Remove all of the created files in the runAyamel directory.'
+    echo '                                       Cleanup is run before any other setup.'
+    echo '                                       This option can be used without one of the required params.'
+    echo '                                       If specified twice, cleanup will be called before and after setup.'
+    echo '          [--setup-only           ]    Will set up all of the specified services but will not run docker-compose.'
+    echo "                                       Mainly for development and testing of $project_name"
+    echo '[--rebuild <service>|-rb <service>]    Will rebuild the given service even if they have not changed.'
+    echo '                                       Passes --build $service --no-cache to `docker-compose up`'
+    echo "                                       If --no-deps is not specified, this will also rebuild the service's dependencies."
+    echo "                                       Valid services include: server, database, beta, prod."
+    echo '          [--build                ]    Used to rebuild all of the services at once.'
+    echo '          [--no-deps          |-nd]    Passes --no-deps to `docker-compose build` which when paired with --rebuild, will'
+    echo "                                       only rebuild the provided service as opposed to all services in the compose file."
+    echo '          [--force-recreate   | -x]    Will recreate the containers even if they are up to date.'
+    echo '                                       Containers will no be updated if this flag is not specified.'
+    echo '                                       Good for use with --build because docker does not check the code changes in the build image and'
+    echo '                                       will therefore not recreate the container.'
+    echo '                                       Passes --force-recreate to `docker-compose up`'
+    echo '          [--service          | -s]    Specify a service. This can be used in conjunction with --force-recreate in order to'
+    echo '                                       only recreate one container. However, this option is overriden by the service specified by --rebuild.'
+    echo '          [--restart          |-rs]    Restarts the specified service.'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
     echo
-    echo '  [--production       | -p]    Use the production docker-compose override file.'
-    echo '  [--beta             | -b]    Use the beta docker-compose override file.'
-    echo '  [--dev              | -d]    Use the development docker-compose override file.'
-    echo '  [--test             | -t]    Use the development docker-compose override file.'
-    echo '                               Use volumes and run tests locally'
-    echo '  [--travis               ]    Use the testing docker-compose override file.'
-    echo '                               Travis specific setup'
+    echo '          [--production       | -p]    Use the production docker-compose override file.'
+    echo '          [--beta             | -b]    Use the beta docker-compose override file.'
+    echo '          [--dev              | -d]    Use the development docker-compose override file.'
+    echo '          [--test             | -t]    Use the development docker-compose override file.'
+    echo '                                       Use volumes and run tests locally'
+    echo '          [--travis               ]    Use the testing docker-compose override file.'
+    echo '                                       Travis specific setup'
     echo
     echo
     echo 'Environment Variables:'
@@ -90,18 +95,24 @@ usage () {
     echo '  YVIDEO_CONFIG_BETA      The path to the yvideo application.conf for the beta service. *Required only for beta'
     echo '  YLEX_CONFIG_PROD        The path to the ylex application.conf. *Required only for production'
     echo '  YLEX_CONFIG_BETA        The path to the ylex application.conf for the beta service. *Required only for beta'
+    echo '  YVIDEO_HTTPD_CONFIG     The path to the httpd.conf file.'
+    echo '  YVIDEO_SITES_AVAILABLE  The path to the sites-available folder.'
     echo "  GITDIR                  The path to the yvideo project and all it's dependencies. Used for development. *Not required"
+    echo
+    echo 'The following are required to enable ssl:'
+    echo
+    echo '  YVIDEO_SERVER_KEY       The path to the server key.'
+    echo '  YVIDEO_SITE_CERTIFICATE The path to the website certificate.'
+    echo '  YVIDEO_CA_CERTIFICATE   The path to the CA certificate.'
+    echo
 }
 
 options () {
+    expect_name=""
     for opt in "$@"; do
         if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]];
         then
             default="true"
-
-        elif [[ "$opt" = "--force-clone" ]] || [[ "$opt" = "-f" ]];
-        then
-            force_clone="true"
 
         elif [[ "$opt" = "--dev" ]] || [[ "$opt" = "-d" ]];
         then
@@ -140,19 +151,26 @@ options () {
             test_local=true
             service="yvideo_dev"
 
+        elif [[ "$opt" = "--no-deps" ]] || [[ "$opt" = "-nd" ]];
+        then
+            no_deps="--no-deps"
+
+        elif [[ "$opt" =~ ^\-\-rebuild=.*$ ]] || [[ "$opt" =~ ^\-rb=.*$ ]];
+        then
+            build=true
+            rebuild_service=${opt##*=}
+
         elif [[ "$opt" = "--build" ]];
         then
             build=true
-            no_deps=true
-
-        elif [[ "$opt" = "--build-with-deps" ]] || [[ "$opt" = "-bd" ]];
-        then
-            build=true
-            no_deps=""
 
         elif [[ "$opt" = "--force-recreate" ]] || [[ "$opt" = "-x" ]];
         then
             recreate="--force-recreate"
+
+        elif [[ "$opt" =~ ^\-\-service=.*$ ]] || [[ "$opt" =~ ^\-s=.*$ ]];
+        then
+            service=${opt##*=}
 
         elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]];
         then
@@ -165,6 +183,10 @@ options () {
         elif [[ "$opt" = "--remove" ]] || [[ "$opt" = "-r" ]];
         then
             remove=true
+
+        elif [[ "$opt" = "--restart" ]] || [[ "$opt" = "-rs" ]];
+        then
+            restart_service=true
 
         elif [[ "$opt" = "-frd" ]];
         then
@@ -222,6 +244,22 @@ remove_containers () {
     fi
 }
 
+prune_docker () {
+    sudo docker system prune -af
+}
+
+# $1 is the service name
+stop_start_service() {
+    if [[ -z "$1" ]]; then
+        echo "[ERROR]: No service provided."
+        exit 1
+    fi
+    con="$project_name"_$1"_1"
+    echo "Restarting: $con"
+    sudo docker stop $con
+    sudo docker start $con
+}
+
 docker_compose_down () {
     if [[ ! -e "$compose_override_file" ]]; then
         echo "YO!! "$compose_override_file" should exist before you can delete anything from that project"
@@ -229,7 +267,7 @@ docker_compose_down () {
         echo "$0 -[d|p|t|b] --setup-only"
         exit 1
     fi
-    sudo docker-compose -f docker-compose.yml -f "$compose_override_file" down -v --rmi all
+    sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" down -v --rmi all
 }
 
 compose_dev () {
@@ -371,6 +409,13 @@ dev_cleanup () {
     cd ../
 }
 
+test_cleanup () {
+    cd test
+    rm -rf Ayamel
+    rm -f application.conf
+    cd ..
+}
+
 cleanup () {
     echo "Cleanup..."
     prod_cleanup "prod"
@@ -381,28 +426,72 @@ cleanup () {
     rm -f *.sql
     cd ..
 
-    cd lamp
+    cd server
+    rm -f httpd.conf
     rm -rf beta
     rm -rf production
+    # delete the sites available folder that we created here.
+    [[ -d "${YVIDEO_SITES_AVAILABLE##*/}" ]] && rm -rf ${YVIDEO_SITES_AVAILABLE##*/}
     cd ..
 }
 
-configure_lamp () {
+configure_server () {
     # the dependencies go inside there
-    # docker 17.05 doesn't like to copy the deps' folders' if they are in production/Dep_folder
+    # docker 17.05 doesn't like to copy the deps' folders if they are in production/Dep_folder
     # it cuts out the first folder for some reason
     # so we nest another folder there
     # it might just be an error with the way we are copying in the dockerfile
-    mkdir -p lamp/beta lamp/production
+    mkdir -p server/beta server/production
 
-    # clone the dependencies into the lamp folder
+    # load in the httpd.conf file into the server directory
+    # this is required for the dockerfile to run.
+    # If we want to run the default config as a fallback, then we would
+    # have to change the server dockerfile.
+    # The server docker image will fail to build if this file is missing
+    if [[ -f "$YVIDEO_HTTPD_CONFIG" ]]; then
+        cp "$YVIDEO_HTTPD_CONFIG" server/httpd.conf
+    else
+        echo "[${YVIDEO_HTTPD_CONFIG:-Environment variable YVIDEO_HTTPD_CONFIG}] does not exist."
+        echo "The environment variable YVIDEO_HTTPD_CONFIG needs to be exported to this script."
+        echo "And it needs to contain the path to a directory."
+        exit 1
+    fi
+
+    # The sites-available should be a folder that contains the apache conf for the sites that will 
+    # be running on this server.
+    # The conf files can contain any apache configuration and they will be included by the httpd.conf file
+    # assuming that it imports the folder that we create here.
+    # The ideal contents of the sites files is two VirtualHost directives. One that runs on port 80 that redirects to
+    # the one that runs on port 443 with ssl enabled.
+    if [[ -d "$YVIDEO_SITES_AVAILABLE" ]] && [[ $(ls -1 $YVIDEO_SITES_AVAILABLE | wc -l) -ne 0 ]]; then
+        export SITES_FOLDER_NAME=${YVIDEO_SITES_AVAILABLE##*/}
+        cp -r $YVIDEO_SITES_AVAILABLE server/
+    else
+        echo "[WARNING] - No httpd site config loaded. Make sure that the"
+        echo "            YVIDEO_SITES_AVAILABLE environment variable contains the path"
+        echo "            to a directory that contains the virtual host configurations for"
+        echo "            the sites you want to run on the yvideo server."
+        echo
+    fi
+
+    # copy the certs and site config into the context folders
+    # make sure to delete these files later
+    if [[ -n "$YVIDEO_SERVER_KEY" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATE" ]] && [[ -n "$YVIDEO_CA_CERTIFICATE" ]]; then
+        sudo cp $YVIDEO_SERVER_KEY server/server.key
+        sudo cp $YVIDEO_SITE_CERTIFICATE server/server.crt
+        sudo cp $YVIDEO_CA_CERTIFICATE server/ca.crt
+    else
+        echo "[WARNING] - ssl certificates and key not found."
+    fi
+
+    # clone the dependencies into the server folder
     declare -A services
     services[production]="master"
     services[beta]="develop"
 
     for srvc in "${!services[@]}"; do
         for repo in "${dependencies_remotes[@]}"; do
-            git clone -b "${services[$srvc]}" --depth 1 "$repo" lamp/"$srvc"/$(basename $repo) &> /dev/null
+            git clone -b "${services[$srvc]}" --depth 1 "$repo" server/"$srvc"/$(basename $repo) &> /dev/null
         done
     done
 }
@@ -412,7 +501,7 @@ configure_database () {
     if [[ ! -d "$YVIDEO_SQL_DATA" ]]; then
         # We don't use database volumes for testing on travis
         if [[ "$compose_override_file" != "$test_compose_file" ]]; then
-            echo "[$YVIDEO_SQL_DATA] does not exist."
+            echo "[${YVIDEO_SQL_DATA:-Environment Variable YVIDEO_SQL_DATA}] does not exist."
             echo "The environment variable YVIDEO_SQL_DATA needs to be exported to this script."
             echo "And it needs to contain the path to a directory."
             exit 1
@@ -450,7 +539,7 @@ setup () {
         echo "This should not happen...exiting"
         exit 1
     fi
-    configure_lamp
+    configure_server
 
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
         compose_dev
@@ -470,34 +559,40 @@ setup () {
 }
 
 run_docker_compose () {
-    # Run docker-compose file (within runAyamel directory)
     echo "Creating Containers..."
 
     if [[ -n $build ]]; then
-        echo "[INFO] - Re-Building the $service Docker Image."
-        if [[ -n "$no_deps" ]]; then
-            echo "[INFO] - Re-building dependencies for $service."
-            no_deps="--no-deps"
+        if [[ -n "$rebuild_service" ]]; then
+            service="$rebuild_service"
+            echo "[INFO] - Going to rebuild $service"
+        else
+            service=""
+            echo "[WARNING] - Going to rebuild all services."
         fi
-        build="$no_deps --build $service"
+        # quoting like so: "$service" breaks docker-compose if it is empty
+        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" build --no-cache $service
+        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
+        exit_code="$?"
     else
         echo "[INFO] - Using Existing Images if Available."
+        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
+        exit_code="$?"
+        [[ -n "$attach" ]] && [[ -n "$container" ]] && sudo docker attach --sig-proxy=false "$container"
     fi
-
-    # quoting like so: "$build" breaks docker-compose up if it is empty
-    sudo docker-compose -f docker-compose.yml -f "$compose_override_file" up -d $recreate $build
-    exit_code="$?"
-    [[ -n "$attach" ]] && [[ -n "$container" ]] && sudo docker attach --sig-proxy=false "$container"
 }
 
 cd "$scriptpath"
 options "$@"
+[[ -n "$restart_service" ]] && stop_start_service "$service" && exit "$exit_code"
 [[ -n "$remove" ]] && remove_containers
 [[ -n "$clean" ]]                 && cleanup
 [[ -n "$full_remove" ]] && [[ -n "$compose_override_file" ]] && echo "Running docker-compose down" && docker_compose_down
 # exit if full remove ran
 [[ -n "$full_remove" ]] && exit $?
 [[ -n "$compose_override_file" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
+rm -f server/server.key
+rm -f server/server.crt
+rm -f server/ca.crt
 [[ -n "$super_duper_clean" ]]     && cleanup
 # use the docker-compose up command exit code rather than whatever the last line may output
 exit "$exit_code"

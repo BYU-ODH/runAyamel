@@ -3,7 +3,7 @@ version: '3'
 services:
     yvideo_prod:
         depends_on:
-         - lamp
+         - server
          - database
         build:
             context: prod/yvideo
@@ -33,8 +33,12 @@ services:
         volumes:
          - ${YVIDEO_SQL_DATA}:/var/lib/mysql
 
-    lamp:
-        build: lamp
+    server:
+        build: server
         ports:
          - "80:80"
+         - "443:443"
+
+volumes:
+    database:
 

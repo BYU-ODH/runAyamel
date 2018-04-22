@@ -60,12 +60,17 @@ usage () {
     echo '                                       Passes --build $service --no-cache to `docker-compose up`'
     echo "                                       If --no-deps is not specified, this will also rebuild the service's dependencies."
     echo "                                       Valid services include: server, database, beta, prod."
+    echo '          [--build                ]    Used to rebuild all of the services at once.'
     echo '          [--no-deps          |-nd]    Passes --no-deps to `docker-compose build` which when paired with --rebuild, will'
     echo "                                       only rebuild the provided service as opposed to all services in the compose file."
     echo '          [--force-recreate   | -x]    Will recreate the containers even if they are up to date.'
+    echo '                                       Containers will no be updated if this flag is not specified.'
     echo '                                       Good for use with --build because docker does not check the code changes in the build image and'
     echo '                                       will therefore not recreate the container.'
     echo '                                       Passes --force-recreate to `docker-compose up`'
+    echo '          [--service          | -s]    Specify a service. This can be used in conjunction with --force-recreate in order to'
+    echo '                                       only recreate one container. However, this option is overriden by the service specified by --rebuild.'
+    echo '          [--restart          |-rs]    Restarts the specified service.'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
@@ -102,19 +107,6 @@ usage () {
 options () {
     expect_name=""
     for opt in "$@"; do
-        if [[ -n "$expect_name" ]];
-        then
-            if [[ "$opt" = "server" ]] || [[ "$opt" = "database" ]] || [[ "$opt" = "beta" ]] || [[ "$opt" = "prod" ]];
-            then
-                rebuild_service="$opt"
-                expect_name=""
-                continue
-            else
-                echo "[ERROR] The --build-dep option requires an argument which is a service name such as: server, database, beta, prod."
-                exit 1
-            fi
-        fi
-
         if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]];
         then
             default="true"
@@ -160,14 +152,22 @@ options () {
         then
             no_deps="--no-deps"
 
-        elif [[ "$opt" = "--rebuild" ]] || [[ "$opt" = "-rb" ]];
+        elif [[ "$opt" =~ ^\-\-rebuild=.*$ ]] || [[ "$opt" =~ ^\-rb=.*$ ]];
         then
             build=true
-            expect_name=true
+            rebuild_service=${opt##*=}
+
+        elif [[ "$opt" = "--build" ]];
+        then
+            build=true
 
         elif [[ "$opt" = "--force-recreate" ]] || [[ "$opt" = "-x" ]];
         then
             recreate="--force-recreate"
+
+        elif [[ "$opt" =~ ^\-\-service=.*$ ]] || [[ "$opt" =~ ^\-s=.*$ ]];
+        then
+            service=${opt##*=}
 
         elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]];
         then
@@ -250,8 +250,10 @@ stop_start_service() {
         echo "[ERROR]: No service provided."
         exit 1
     fi
-    sudo docker stop "$project_name"_$1"_1"
-    sudo docker start "$project_name"_$1"_1"
+    con="$project_name"_$1"_1"
+    echo "Restarting: $con"
+    sudo docker stop $con
+    sudo docker start $con
 }
 
 docker_compose_down () {
@@ -534,23 +536,20 @@ run_docker_compose () {
     echo "Creating Containers..."
 
     if [[ -n $build ]]; then
-        if [[ -n "$no_deps" ]]; then
-            echo "Building a service without dependencies."
-        fi
         if [[ -n "$rebuild_service" ]]; then
             service="$rebuild_service"
+            echo "[INFO] - Going to rebuild $service"
         else
-            echo "[ERROR] - A service to rebuild was not provided."
-            exit 1
+            service=""
+            echo "[WARNING] - Going to rebuild all services."
         fi
-        echo "[INFO] - Going to rebuild $rebuild_service"
         # quoting like so: "$service" breaks docker-compose if it is empty
         sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" build --no-cache $service
         sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
         exit_code="$?"
     else
         echo "[INFO] - Using Existing Images if Available."
-        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate
+        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
         exit_code="$?"
         [[ -n "$attach" ]] && [[ -n "$container" ]] && sudo docker attach --sig-proxy=false "$container"
     fi

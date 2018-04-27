@@ -1,4 +1,4 @@
-FROM java
+FROM anapsix/alpine-java
 
 RUN apt-get update
 RUN apt-get install wget
@@ -9,10 +9,10 @@ COPY DictionaryLookup /DictionaryLookup/
 # Copy in the application.conf file
 COPY application.conf /DictionaryLookup/conf/
 
-WORKDIR /DictionaryLookup
-
-# Get sbt
 ARG sbt_version
-RUN wget "https://dl.bintray.com/sbt/debian/sbt-$sbt_version.deb"
-RUN dpkg -i sbt-$sbt_version.deb
+RUN wget -q "https://dl.bintray.com/sbt/native-packages/sbt/0.13.8/sbt-$sbt_version.zip"
+RUN unzip -q sbt-$sbt_version.zip
+RUN ln -s /sbt/bin/sbt /usr/local/bin/sbt
+
+WORKDIR /DictionaryLookup
 

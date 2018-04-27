@@ -575,6 +575,7 @@ run_docker_compose () {
         exit_code="$?"
     else
         echo "[INFO] - Using Existing Images if Available."
+        echo "-p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service"
         sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
         exit_code="$?"
         [[ -n "$attach" ]] && [[ -n "$container" ]] && sudo docker attach --sig-proxy=false "$container"

@@ -17,7 +17,7 @@ services:
 
     ylex_prod:
         depends_on:
-         - lamp
+         - server
          - database
         build:
             context: prod/ylex

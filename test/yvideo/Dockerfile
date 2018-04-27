@@ -1,7 +1,6 @@
-FROM anapsix/alpine-java
+FROM openjdk:8-alpine
 
-RUN apt-get update
-RUN apt-get install wget
+RUN apk update && apk add bash
 
 # Copy code into image
 COPY Ayamel /Ayamel/

@@ -1,4 +1,6 @@
-FROM anapsix/alpine-java
+FROM openjdk:8-alpine
+
+RUN apk update && apk add bash
 
 # Get sbt
 ARG sbt_version

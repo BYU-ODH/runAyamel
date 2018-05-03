@@ -7,5 +7,5 @@ RUN wget -q "https://dl.bintray.com/sbt/native-packages/sbt/0.13.8/sbt-$sbt_vers
 RUN unzip -q sbt-$sbt_version.zip
 RUN ln -s /sbt/bin/sbt /usr/local/bin/sbt
 
-WORKDIR /DictionaryLookup
+WORKDIR /yvideo-dict-lookup
 

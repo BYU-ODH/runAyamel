@@ -13,7 +13,6 @@ setup_only=""
 super_duper_clean=""
 travis=""
 test_local=""
-ayamel_dir=""
 project_name="yvideo"
 git_dir=${GITDIR:-~/Documents/GitHub}
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
@@ -29,14 +28,14 @@ exit_code="0"
 container=""
 
 declare -A repos # Associative array! :) used in the compose_dev function
-repos=([Ayamel]="" [Ayamel.js]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="" [ayamel-dictionary-lookup]="")
-ayamel_remote=(https://github.com/byu-odh/Ayamel)
-ylex_remote=(https://github.com/byu-odh/ayamel-dictionary-lookup)
-dependencies_remotes=(https://github.com/byu-odh/Ayamel.js
+repos=([yvideo]="" [yvideojs]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="" [yvideo-dict-lookup]="")
+yvideo_remote=(https://github.com/byu-odh/yvideo)
+ylex_remote=(https://github.com/byu-odh/yvideo-dict-lookup)
+dependencies_remotes=(https://github.com/byu-odh/yvideojs
         https://github.com/byu-odh/EditorWidgets
         https://github.com/byu-odh/subtitle-timeline-editor
         https://github.com/byu-odh/TimedText)
-remotes=("${ayamel_remote[@]}" "${dependencies_remotes[@]}" "${ylex_remote[@]}")
+remotes=("${yvideo_remote[@]}" "${dependencies_remotes[@]}" "${ylex_remote[@]}")
 
 usage () {
     echo 'Optional Params:'
@@ -51,7 +50,7 @@ usage () {
     echo "          [--remove           | -r]    Removes all of the containers that start with the project prefix: $project_name"
     echo '                                       Containers are removed before anything else is done.'
     echo '          [ -frd |-frb |-frp |-frt]    Removes everything in the docker-compose project using the corresponding compose override file and docker-compose down.'
-    echo '          [--clean            | -c]    Remove all of the created files in the runAyamel directory.'
+    echo '          [--clean            | -c]    Remove all of the created files in the yvideo-deploy directory.'
     echo '                                       Cleanup is run before any other setup.'
     echo '                                       This option can be used without one of the required params.'
     echo '                                       If specified twice, cleanup will be called before and after setup.'
@@ -119,21 +118,18 @@ options () {
             template_file="template.dev.yml"
             compose_override_file="$dev_compose_file"
             container="$project_name""_yvideo_dev_1"
-            service="yvideo_dev"
 
         elif [[ "$opt" = "--production" ]] || [[ "$opt" = "-p" ]];
         then
             template_file="template.production.yml"
             compose_override_file="$production_compose_file"
             container="$project_name""_yvideo_prod_1"
-            service="yvideo_prod"
 
         elif [[ "$opt" = "--beta" ]] || [[ "$opt" = "-b" ]];
         then
             template_file="template.beta.yml"
             compose_override_file="$beta_compose_file"
             container="$project_name""_yvideo_beta_1"
-            service="yvideo_beta"
 
         elif [[ "$opt" = "--travis" ]];
         then
@@ -141,7 +137,6 @@ options () {
             compose_override_file="$test_compose_file"
             container="$project_name""_yvideo_test_1"
             travis=true
-            service="yvideo_test"
 
         elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]];
         then
@@ -149,7 +144,6 @@ options () {
             compose_override_file="$dev_compose_file"
             container="$project_name""_yvideo_dev_1"
             test_local=true
-            service="yvideo_dev"
 
         elif [[ "$opt" = "--no-deps" ]] || [[ "$opt" = "-nd" ]];
         then
@@ -234,7 +228,7 @@ options () {
 }
 
 remove_containers () {
-    # remove all of the containers that start with runayamel_
+    # remove all of the containers that start with yvideo
     container_ids=$(sudo docker ps -aq -f name=${project_name}_*)
     if [[ -n "$container_ids" ]]; then
         # check non-empty so there are no errors printed
@@ -248,9 +242,8 @@ prune_docker () {
     sudo docker system prune -af
 }
 
-# $1 is the service name
 stop_start_service() {
-    if [[ -z "$1" ]]; then
+    if [[ -z "$service" ]]; then
         echo "[ERROR]: No service provided."
         exit 1
     fi
@@ -303,12 +296,12 @@ compose_dev () {
         dev_command="run"
     fi
     export dev_command
-    export Ayamel="${repos[Ayamel]}"
-    export Ayamel_js="${repos[Ayamel.js]}"
+    export yvideo="${repos[yvideo]}"
+    export yvideojs="${repos[yvideojs]}"
     export subtitle_timeline_editor="${repos[subtitle-timeline-editor]}"
     export EditorWidgets="${repos[EditorWidgets]}"
     export TimedText="${repos[TimedText]}"
-    export DictionaryLookup="${repos[ayamel-dictionary-lookup]}"
+    export yvideo_dict_lookup="${repos[yvideo-dict-lookup]}"
     substitute_environment_variables "template.dev.yml" "docker-compose.dev.yml"
 }
 
@@ -322,7 +315,7 @@ compose_test () {
         exit 1
     fi
     if [[ "$BRANCH" != "master" ]]; then
-        # all branches of Ayamel use the develop branch of the dependencies except for
+        # all branches of yvideo use the develop branch of the dependencies except for
         # the master branch which uses the master branch of the dependencies
         BRANCH="develop"
     fi
@@ -342,8 +335,8 @@ compose_production () {
     # is to send the context directory (and subdirectories) to the docker daemon.
     # https://docs.docker.com/engine/reference/builder/#copy
     if [[ -f "$YVIDEO_CONFIG" ]]; then
-        # clone the ayamel branch into the production folder
-        git clone -b "$1" --depth 1 "$ayamel_remote" "$2"/yvideo/$(basename $ayamel_remote) &> /dev/null
+        # clone the yvideo master branch into the production folder
+        git clone -b "$1" --depth 1 "$yvideo_remote" "$2"/yvideo/$(basename $yvideo_remote) &> /dev/null
         # copy it into the production dockerfile folder
         cp "$YVIDEO_CONFIG" "$2"/yvideo/application.conf
     else
@@ -355,7 +348,7 @@ compose_production () {
     # copy the application.conf file into the context of the dockerfile for ylex
     if [[ -f "$YLEX_CONFIG" ]]; then
         # clone the ylex branch into the ylex folder
-        git clone -b "$1" --depth 1 "$ylex_remote" "$2"/ylex/DictionaryLookup &> /dev/null
+        git clone -b "$1" --depth 1 "$ylex_remote" "$2"/ylex/yvideo-dict-lookup &> /dev/null
         # copy the application.conf file into the ylex dockerfile folder
         cp "$YLEX_CONFIG" "$2"/ylex/application.conf
     else
@@ -381,7 +374,7 @@ substitute_environment_variables () {
 ylex_cleanup() {
     cd ylex
     rm -f application.conf
-    rm -rf DictionaryLookup
+    rm -rf yvideo-dict-lookup
     cd ../
 }
 
@@ -391,7 +384,7 @@ prod_cleanup () {
     cd  "$1"
 
     cd yvideo
-    rm -rf Ayamel
+    rm -rf yvideo
     rm -f application.conf
     cd ../
 
@@ -411,7 +404,7 @@ dev_cleanup () {
 
 test_cleanup () {
     cd test
-    rm -rf Ayamel
+    rm -rf yvideo
     rm -f application.conf
     cd ..
 }
@@ -575,7 +568,7 @@ run_docker_compose () {
         exit_code="$?"
     else
         echo "[INFO] - Using Existing Images if Available."
-        echo "-p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service"
+        echo "$service"
         sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
         exit_code="$?"
         [[ -n "$attach" ]] && [[ -n "$container" ]] && sudo docker attach --sig-proxy=false "$container"
@@ -584,7 +577,7 @@ run_docker_compose () {
 
 cd "$scriptpath"
 options "$@"
-[[ -n "$restart_service" ]] && stop_start_service "$service" && exit "$exit_code"
+[[ -n "$restart_service" ]] && stop_start_service && exit "$exit_code"
 [[ -n "$remove" ]] && remove_containers
 [[ -n "$clean" ]]                 && cleanup
 [[ -n "$full_remove" ]] && [[ -n "$compose_override_file" ]] && echo "Running docker-compose down" && docker_compose_down

@@ -1,4 +1,4 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 
 default=""
 attach=""
@@ -368,7 +368,15 @@ substitute_environment_variables () {
         echo "[ERROR]: substitute environment variables: $1 does not exist."
         exit 1
     fi
-    cat "$1" | envsubst > "$2"
+    envsubst_location=$(which envsubst)
+    if [[ -n envsubst_location ]]; then
+        cat "$1" | envsubst > "$2"
+    else
+        echo "For the time being, this script requires the program envsubst from the package gettext to be installed."
+        echo "It should be easy to install on ubuntu and mac using apt and brew respectively."
+        echo "Now exiting..."
+        exit
+    fi
 }
 
 ylex_cleanup() {
@@ -518,8 +526,10 @@ configure_database () {
 setup () {
     # Turn off other mysql servers
     if [[ -n $(pgrep mysql) ]]; then
-        echo "Stopping mysql database..."
-        sudo service mysql stop
+        if [[ $(uname) = "Linux" ]]; then
+            echo "Stopping mysql database..."
+            sudo service mysql stop
+        fi
     fi
 
     configure_database

@@ -587,7 +587,7 @@ run_docker_compose () {
 
 cd "$scriptpath"
 options "$@"
-[[ -n "$restart_service" ]] && stop_start_service && exit "$exit_code"
+[[ -n "$restart_service" ]] && stop_start_service $service && exit "$exit_code"
 [[ -n "$remove" ]] && remove_containers
 [[ -n "$clean" ]]                 && cleanup
 [[ -n "$full_remove" ]] && [[ -n "$compose_override_file" ]] && echo "Running docker-compose down" && docker_compose_down

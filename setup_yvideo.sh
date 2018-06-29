@@ -451,7 +451,7 @@ configure_server () {
     # The server docker image will fail to build if this file is missing
     if [[ -f "$YVIDEO_HTTPD_CONFIG" ]]; then
         cp "$YVIDEO_HTTPD_CONFIG" server/httpd.conf
-    else
+    elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
         echo "[${YVIDEO_HTTPD_CONFIG:-Environment variable YVIDEO_HTTPD_CONFIG}] does not exist."
         echo "The environment variable YVIDEO_HTTPD_CONFIG needs to be exported to this script."
         echo "And it needs to contain the path to a directory."
@@ -467,7 +467,7 @@ configure_server () {
     if [[ -d "$YVIDEO_SITES_AVAILABLE" ]] && [[ $(ls -1 $YVIDEO_SITES_AVAILABLE | wc -l) -ne 0 ]]; then
         export SITES_FOLDER_NAME=${YVIDEO_SITES_AVAILABLE##*/}
         cp -r $YVIDEO_SITES_AVAILABLE server/
-    else
+    elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
         echo "[WARNING] - No httpd site config loaded. Make sure that the"
         echo "            YVIDEO_SITES_AVAILABLE environment variable contains the path"
         echo "            to a directory that contains the virtual host configurations for"

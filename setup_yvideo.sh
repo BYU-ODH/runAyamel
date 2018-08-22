@@ -379,61 +379,8 @@ substitute_environment_variables () {
     fi
 }
 
-ylex_cleanup() {
-    cd ylex
-    rm -f application.conf
-    rm -rf yvideo-dict-lookup
-    cd ../
-}
-
-# $1 is the foldername: beta or prod
-prod_cleanup () {
-    rm -f docker-compose.production.yml
-    cd  "$1"
-
-    cd yvideo
-    rm -rf yvideo
-    rm -f application.conf
-    cd ../
-
-    ylex_cleanup
-
-    cd ../
-}
-
-dev_cleanup () {
-    # This file is the one with the volumes filled in by envsubst
-    # so we get rid of the filled out version here
-    rm -f docker-compose.dev.yml
-    cd dev/
-    ylex_cleanup
-    cd ../
-}
-
-test_cleanup () {
-    cd test
-    rm -rf yvideo
-    rm -f application.conf
-    cd ..
-}
-
 cleanup () {
-    echo "Cleanup..."
-    prod_cleanup "prod"
-    prod_cleanup "beta"
-    dev_cleanup
-
-    cd db
-    rm -f *.sql
-    cd ..
-
-    cd server
-    rm -f httpd.conf
-    rm -rf beta
-    rm -rf production
-    # delete the sites available folder that we created here.
-    [[ -d "${YVIDEO_SITES_AVAILABLE##*/}" ]] && rm -rf ${YVIDEO_SITES_AVAILABLE##*/}
-    cd ..
+    git clean -xdf
 }
 
 configure_server () {

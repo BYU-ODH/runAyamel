@@ -9,7 +9,7 @@ COPY yvideo-dict-lookup /yvideo-dict-lookup/
 COPY application.conf /yvideo-dict-lookup/conf/
 
 ARG sbt_version
-RUN wget -q "https://dl.bintray.com/sbt/native-packages/sbt/0.13.8/sbt-$sbt_version.zip"
+RUN wget -q "https://dl.bintray.com/sbt/native-packages/sbt/$sbt_version/sbt-$sbt_version.zip"
 RUN unzip -q sbt-$sbt_version.zip
 RUN ln -s /sbt/bin/sbt /usr/local/bin/sbt
 

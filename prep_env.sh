@@ -5,8 +5,17 @@ set -e
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
 repos_folder=$(dirname "$scriptpath")
 distro="$(lsb_release -si 2>/dev/null)"
-docker_location="$(which docker 2>/dev/null)"
-dcompose_location="$(which docker-compose 2>/dev/null)"
+docker_location="$(which docker 2>/dev/null)" && :
+dcompose_location="$(which docker-compose 2>/dev/null)" && :
+branch=""
+
+get_branch () {
+    if [[ -n "$1" ]]; then
+        branch="$1"
+    else
+        branch="master"
+    fi
+}
 
 # clones all of the code for the project
 clone_repos () {
@@ -17,8 +26,13 @@ clone_repos () {
         prefix="git@github.com:"
     fi
     for reponame in yvideo yvideo-dict-lookup yvideojs subtitle-timeline-editor TimedText EditorWidgets; do
+        remote="$prefix""BYU-ODH/""$reponame"
         cd $(dirname $scriptpath)
-        echo "$prefixBYU-ODH/$reponame"
+        git clone "$remote"
+        cd "$reponame"
+        if [[ -n $(git ls-remote --heads "$remote" "$branch") ]]; then
+            git checkout "$branch"
+        fi
     done
 }
 
@@ -69,5 +83,7 @@ install_docker () {
     fi
 }
 
+get_branch "$1"
 clone_repos
+install_docker
 

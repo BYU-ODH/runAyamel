@@ -1,44 +1,44 @@
 #/bin/bash
 
-set -e
-
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
 repos_folder=$(dirname "$scriptpath")
 distro="$(lsb_release -si 2>/dev/null)"
-docker_location="$(which docker 2>/dev/null)" && :
-dcompose_location="$(which docker-compose 2>/dev/null)" && :
-branch=""
-
-get_branch () {
-    if [[ -n "$1" ]]; then
-        branch="$1"
-    else
-        branch="master"
-    fi
-}
+docker_location="$(which docker 2>/dev/null)"
+dcompose_location="$(which docker-compose 2>/dev/null)"
 
 # clones all of the code for the project
 clone_repos () {
-    github="$(ssh -o StrictHostKeyChecking=no git@github.com 2>&1 | grep 'Permission denied (publickey).')" && :
-    if [[ -n "$github" ]]; then
-        prefix="https://github.com/"
-    else
-        prefix="git@github.com:"
-    fi
-    for reponame in yvideo yvideo-dict-lookup yvideojs subtitle-timeline-editor TimedText EditorWidgets; do
-        remote="$prefix""BYU-ODH/""$reponame"
-        cd $(dirname $scriptpath)
-        git clone "$remote"
-        cd "$reponame"
-        if [[ -n $(git ls-remote --heads "$remote" "$branch") ]]; then
-            git checkout "$branch"
+    if [[ -n "$1" ]]; then
+        branch="$1"
+        github="$(ssh -o StrictHostKeyChecking=no git@github.com 2>&1 | grep 'Permission denied (publickey).')"
+        if [[ -n "$github" ]]; then
+            prefix="https://github.com/"
+        else
+            prefix="git@github.com:"
         fi
-    done
+        for reponame in yvideo yvideo-dict-lookup yvideojs subtitle-timeline-editor TimedText EditorWidgets; do
+            remote="$prefix""BYU-ODH/""$reponame"
+            cd $(dirname $scriptpath)
+            if [[ -d "$reponame" ]]; then
+                echo "$reponame has already been cloned."
+            else
+                git clone "$remote"
+            fi
+            cd "$reponame"
+            if [[ -n $(git ls-remote --heads "$remote" "$branch") ]]; then
+                git checkout "$branch"
+            else
+                echo "Branch $branch does not exist for repository: $reponame"
+            fi
+        done
+    else
+        echo "No branchname was specified, skipping cloning repositories."
+    fi
 }
 
 # installs docker and docker-compose
 install_docker () {
-    if [[ -z "$docker_loction" ]]; then
+    if [[ -z "$docker_location" ]]; then
         # install docker
         if [[ "$distro" = "Ubuntu" ]]; then
             sudo apt-get install -y --no-install-recommends apt-transport-https ca-certificates curl software-properties-common
@@ -71,19 +71,14 @@ install_docker () {
             sudo dnf config-manager \
                 --add-repo \
                 https://download.docker.com/linux/fedora/docker-ce.repo
-            sudo dnf install docker-ce
+            sudo dnf install -y docker-ce
             sudo systemctl start docker
         fi
-    fi
-
-    if [[ -z "$docker_location" ]]; then
-        # install docker-compose
         sudo curl -L "https://github.com/docker/compose/releases/download/1.21.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
         sudo chmod +x /usr/local/bin/docker-compose
     fi
 }
 
-get_branch "$1"
-clone_repos
+clone_repos "$1"
 install_docker
 

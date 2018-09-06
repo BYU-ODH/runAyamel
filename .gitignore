@@ -11,3 +11,5 @@ docker-compose.production.yml
 *.crt
 *.key
 *.conf
+server/beta**
+server/production**

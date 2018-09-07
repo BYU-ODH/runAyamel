@@ -15,7 +15,7 @@ services:
 
     ylex_test:
         depends_on:
-         - lamp
+         - server
          - database
         build:
             context: test/ylex

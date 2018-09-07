@@ -380,7 +380,7 @@ substitute_environment_variables () {
 }
 
 cleanup () {
-    git clean -xdf
+    git clean -xdff
 }
 
 configure_server () {

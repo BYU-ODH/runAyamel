@@ -5,9 +5,6 @@ RUN apk update && apk add bash
 # Copy code into image
 COPY yvideo /yvideo/
 
-# Copy in the application.conf file
-COPY application.conf /yvideo/conf/
-
 ARG sbt_version
 RUN wget -q "https://dl.bintray.com/sbt/native-packages/sbt/$sbt_version/sbt-$sbt_version.zip"
 RUN unzip -q sbt-$sbt_version.zip

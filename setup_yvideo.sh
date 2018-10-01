@@ -303,6 +303,19 @@ compose_dev () {
     export TimedText="${repos[TimedText]}"
     export yvideo_dict_lookup="${repos[yvideo-dict-lookup]}"
     substitute_environment_variables "template.dev.yml" "docker-compose.dev.yml"
+
+    if [[ "$service" = "yvideo_dev" ]]; then
+       substitute_environment_variables yvideotemplate.dev.yml yvideo.dev.yml
+       cat yvideo.dev.yml >> docker-compose.dev.yml
+    elif [[ "$service" = "ylex_dev" ]]; then
+       substitute_environment_variables ylextemplate.dev.yml ylex.dev.yml
+       cat ylex.dev.yml >> docker-compose.dev.yml
+    else
+       substitute_environment_variables yvideotemplate.dev.yml yvideo.dev.yml
+       substitute_environment_variables ylextemplate.dev.yml ylex.dev.yml
+       cat yvideo.dev.yml >> docker-compose.dev.yml
+       cat ylex.dev.yml >> docker-compose.dev.yml
+    fi
 }
 
 # used when --travis is specified

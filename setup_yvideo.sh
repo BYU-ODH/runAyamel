@@ -418,7 +418,7 @@ configure_server () {
         exit 1
     fi
 
-    # The sites-available should be a folder that contains the apache conf for the sites that will 
+    # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.
     # The conf files can contain any apache configuration and they will be included by the httpd.conf file
     # assuming that it imports the folder that we create here.

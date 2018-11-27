@@ -229,17 +229,17 @@ options () {
 
 remove_containers () {
     # remove all of the containers that start with yvideo
-    container_ids=$(sudo docker ps -aq -f name=${project_name}_*)
+    container_ids=$(docker ps -aq -f name=${project_name}_*)
     if [[ -n "$container_ids" ]]; then
         # check non-empty so there are no errors printed
         # can't simply use variable substitution as the output contains newlines
         # clearest is to simply call ps -a twice
-        sudo docker rm -f $(sudo docker ps -aq -f name=${project_name}_*)
+        docker rm -f $(docker ps -aq -f name=${project_name}_*)
     fi
 }
 
 prune_docker () {
-    sudo docker system prune -af
+    docker system prune -af
 }
 
 stop_start_service() {
@@ -249,8 +249,8 @@ stop_start_service() {
     fi
     con="$project_name"_$1"_1"
     echo "Restarting: $con"
-    sudo docker stop $con
-    sudo docker start $con
+    docker stop $con
+    docker start $con
 }
 
 docker_compose_down () {
@@ -260,7 +260,7 @@ docker_compose_down () {
         echo "$0 -[d|p|t|b] --setup-only"
         exit 1
     fi
-    sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" down -v --rmi all
+    docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" down -v --rmi all
 }
 
 compose_dev () {
@@ -533,15 +533,15 @@ run_docker_compose () {
             echo "[WARNING] - Going to rebuild all services."
         fi
         # quoting like so: "$service" breaks docker-compose if it is empty
-        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" build --no-cache $service
-        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
+        docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" build --no-cache $service
+        docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
         exit_code="$?"
     else
         echo "[INFO] - Using Existing Images if Available."
         echo "$service"
-        sudo docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
+        docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
         exit_code="$?"
-        [[ -n "$attach" ]] && [[ -n "$container" ]] && sudo docker attach --sig-proxy=false "$container"
+        [[ -n "$attach" ]] && [[ -n "$container" ]] && docker attach --sig-proxy=false "$container"
     fi
 }
 

@@ -13,3 +13,5 @@ docker-compose.production.yml
 *.conf
 server/beta**
 server/production**
+env
+*.tar

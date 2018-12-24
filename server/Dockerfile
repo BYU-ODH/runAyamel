@@ -9,7 +9,7 @@ RUN sed -i \
         -e 's/^#\(LoadModule ssl_module modules\/mod_ssl.so\)/\1/' \
         -e 's/^#\(LoadModule rewrite_module modules\/mod_rewrite.so\)/\1/' \
         -e 's/^#\(Include conf\/extra\/httpd-ssl.conf\)/\1/' \
-        -e 's/^#\(Include\) conf\/extra\/httpd-vhosts.conf/\1 conf\/extra\/$sites_available\/*.conf/' \
+        -e "s/^#\(Include\) conf\/extra\/httpd-vhosts.conf/\1 conf\/extra\/$sites_available\/*.conf/" \
         -e 's/\(ServerAdmin\) you@example.com/\1 santiago_verdu@byu.edu/' \
         conf/httpd.conf
 

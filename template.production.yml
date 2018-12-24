@@ -34,7 +34,9 @@ services:
          - ${YVIDEO_SQL_DATA}:/var/lib/mysql
 
     server:
-        build: server
+        build:
+            context: server
+            dockerfile: Dockerfile
             args:
                 sites_available: ${SITES_FOLDER_NAME}
         ports:

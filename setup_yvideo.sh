@@ -508,14 +508,6 @@ configure_database () {
 }
 
 setup () {
-    # Turn off other mysql servers
-    if [[ -n $(pgrep mysql) ]]; then
-        if [[ $(uname) = "Linux" ]]; then
-            echo "Stopping mysql database..."
-            sudo service mysql stop
-        fi
-    fi
-
     configure_database
     if [[ -n "$template_file" ]]; then
         echo "Creating $compose_override_file"

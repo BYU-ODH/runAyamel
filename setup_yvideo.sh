@@ -396,11 +396,7 @@ cleanup () {
 }
 
 configure_server () {
-    # the dependencies go inside there
-    # docker 17.05 doesn't like to copy the deps' folders if they are in production/Dep_folder
-    # it cuts out the first folder for some reason
-    # so we nest another folder there
-    # it might just be an error with the way we are copying in the dockerfile
+    # the dependencies go inside here
     mkdir -p server/beta/css server/production/css server/beta/js server/production/js
 
     # load in the httpd.conf file into the server directory

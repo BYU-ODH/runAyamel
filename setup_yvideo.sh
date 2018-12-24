@@ -102,6 +102,9 @@ usage () {
     echo
     echo '  YVIDEO_SERVER_KEYS       Space separated paths to server keys'
     echo '  YVIDEO_SITE_CERTIFICATES Space separated paths to site certs'
+    echo '                           Both of the previous variables are space separated lists of paths to key or cert files.'
+    echo '                           The key files will be renamed to key#.key and the cert files will be renamed to cert#.crt'
+    echo '                           where the # is the index to the file in the list starting with 0.'
     echo
 }
 
@@ -426,7 +429,7 @@ configure_server () {
         echo "[WARNING] - No httpd site config loaded. Make sure that the"
         echo "            YVIDEO_SITES_AVAILABLE environment variable contains the path"
         echo "            to a directory that contains the virtual host configurations for"
-        echo "            the sites you want to run on the yvideo server."
+        echo "            the sites you want to run on the httpd server."
         echo
     fi
 
@@ -514,6 +517,7 @@ configure_database () {
 }
 
 setup () {
+    configure_server
     configure_database
     if [[ -n "$template_file" ]]; then
         echo "Creating $compose_override_file"
@@ -524,7 +528,6 @@ setup () {
         echo "This should not happen...exiting"
         exit 1
     fi
-    configure_server
 
     if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
         compose_dev

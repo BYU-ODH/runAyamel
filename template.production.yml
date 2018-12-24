@@ -35,6 +35,8 @@ services:
 
     server:
         build: server
+            args:
+                sites_available: ${SITES_FOLDER_NAME}
         ports:
          - "80:80"
          - "443:443"

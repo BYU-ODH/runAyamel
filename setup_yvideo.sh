@@ -438,7 +438,7 @@ configure_server () {
     # copy the certs and site config into the context folders
     # make sure to delete these files later
     if [[ -n "$YVIDEO_SERVER_KEY" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATE" ]] && [[ -n "$YVIDEO_CA_CERTIFICATE" ]]; then
-        sudo cp $YVIDEO_SERVER_KEY server/server.key
+        cp $YVIDEO_SERVER_KEY server/server.key
         cp $YVIDEO_SITE_CERTIFICATE server/server.crt
         cp $YVIDEO_CA_CERTIFICATE server/ca.crt
     else

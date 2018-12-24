@@ -388,7 +388,7 @@ substitute_environment_variables () {
         echo "For the time being, this script requires the program envsubst from the package gettext to be installed."
         echo "It should be easy to install on ubuntu and mac using apt and brew respectively."
         echo "Now exiting..."
-        exit
+        exit 1
     fi
 }
 
@@ -402,7 +402,7 @@ configure_server () {
     # it cuts out the first folder for some reason
     # so we nest another folder there
     # it might just be an error with the way we are copying in the dockerfile
-    mkdir -p server/beta server/production
+    mkdir -p server/beta/css server/production/css server/beta/js server/production/js
 
     # load in the httpd.conf file into the server directory
     # this is required for the dockerfile to run.
@@ -444,17 +444,41 @@ configure_server () {
     else
         echo "[WARNING] - ssl certificates and key not found."
     fi
-
-    # clone the dependencies into the server folder
+    
     declare -A services
     services[production]="master"
     services[beta]="develop"
 
-    for srvc in "${!services[@]}"; do
-        for repo in "${dependencies_remotes[@]}"; do
-            git clone -b "${services[$srvc]}" --depth 1 "$repo" server/"$srvc"/$(basename $repo) &> /dev/null
+    if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
+        # clone the repos
+        for srvc in "${!services[@]}"; do
+            for repo in "${dependencies_remotes[@]}"; do
+                git clone -b "${services[$srvc]}" --depth 1 "$repo" server/"$srvc"/$(basename $repo) &> /dev/null
+            done
         done
+    fi
+    python_environment_name="env"
+    if [[ ! -d "$python_environment_name" ]]; then
+        echo "creating virtual environment"
+        virtualenv -p ${1:-python3} $python_environment_name
+    fi
+    . "$python_environment_name/bin/activate"
+    # load requirements file
+    python_requirements="requirements.txt"
+    pip install -qr $python_requirements
+    # download the dependency releases into the server folder using the download_releases.py script
+    # it requires the requests package which we install here in a virtualenv
+    for srvc in "${!services[@]}"; do
+        echo "Downloading $srvc releases..."
+        releases=$(python download_release.py ${services[$srvc]})
+        for release in $releases; do
+            echo "Extracting: $release"
+            tar xf $release
+        done
+        mv css/* server/$srvc/css
+        mv js/* server/$srvc/js
     done
+    deactivate
 }
 
 configure_database () {

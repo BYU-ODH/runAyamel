@@ -444,7 +444,7 @@ configure_server () {
     else
         echo "[WARNING] - ssl certificates and key not found."
     fi
-    
+
     declare -A services
     services[production]="master"
     services[beta]="develop"
@@ -471,6 +471,9 @@ configure_server () {
     for srvc in "${!services[@]}"; do
         echo "Downloading $srvc releases..."
         releases=$(python download_release.py ${services[$srvc]})
+        if [[ -z "$releases" ]]; then
+            echo "[WARNING]: No Releases found for $srvc service"
+        fi
         for release in $releases; do
             echo "Extracting: $release"
             tar xf $release

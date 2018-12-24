@@ -29,8 +29,11 @@ class Worker(threading.Thread):
                     release = rel['assets'][0]['browser_download_url']
                     filename = self.repo + '-' + rel['assets'][0]['name']
                     download_request = requests.get(release, stream=True)
+                    if download_request.status_code == 302:
+                        print("Redirecting to %s" % download_request.headers['Location'])
+                        download_request = requests.get(download_request.headers['Location'], stream=True)
                     with open(filename, 'wb') as f:
-                        for chunk in download_request.iter_content(chunk_size=1024): 
+                        for chunk in download_request.iter_content(chunk_size=1024):
                             if chunk: # filter out keep-alive new chunks
                                 f.write(chunk)
                     print(filename)

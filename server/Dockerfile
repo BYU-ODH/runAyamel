@@ -1,4 +1,4 @@
-FROM httpd:alpine
+FROM httpd:latest
 
 # Copy apache/site configuration
 COPY $sites_available /usr/local/apache2/conf/extra/$sites_available

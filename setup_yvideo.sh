@@ -100,9 +100,8 @@ usage () {
     echo
     echo 'The following are required to enable ssl:'
     echo
-    echo '  YVIDEO_SERVER_KEY       The path to the server key.'
-    echo '  YVIDEO_SITE_CERTIFICATE The path to the website certificate.'
-    echo '  YVIDEO_CA_CERTIFICATE   The path to the CA certificate.'
+    echo '  YVIDEO_SERVER_KEYS       Space separated paths to server keys'
+    echo '  YVIDEO_SITE_CERTIFICATES Space separated paths to site certs'
     echo
 }
 
@@ -435,14 +434,17 @@ configure_server () {
         echo
     fi
 
-    # copy the certs and site config into the context folders
+    # copy the certs and keys into the context folders
     # make sure to delete these files later
-    if [[ -n "$YVIDEO_SERVER_KEY" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATE" ]] && [[ -n "$YVIDEO_CA_CERTIFICATE" ]]; then
-        cp $YVIDEO_SERVER_KEY server/server.key
-        cp $YVIDEO_SITE_CERTIFICATE server/server.crt
-        cp $YVIDEO_CA_CERTIFICATE server/ca.crt
+    if [[ -n "$YVIDEO_SERVER_KEY" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATE" ]]; then
+        for key in $YVIDEO_SERVER_KEYS; do
+            cp $key server/$key
+        done
+        for crt in $YVIDEO_SITE_CERTIFICATES; do
+            cp $crt server/$crt
+        done
     else
-        echo "[WARNING] - ssl certificates and key not found."
+        echo "[WARNING] - ssl site certificate and key not found."
     fi
 
     declare -A services
@@ -573,9 +575,9 @@ options "$@"
 # exit if full remove ran
 [[ -n "$full_remove" ]] && exit $?
 [[ -n "$compose_override_file" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
-rm -f server/server.key
-rm -f server/server.crt
-rm -f server/ca.crt
+# remove any copied keys and certificates
+rm -f server/*.key
+rm -f server/*.crt
 [[ -n "$super_duper_clean" ]]     && cleanup
 # use the docker-compose up command exit code rather than whatever the last line may output
 exit "$exit_code"

@@ -13,7 +13,7 @@ services:
         image: yvideo_prod
         ports:
          - "9001:9000"
-        command: bash -c "sbt clean stage && target/universal/stage/bin/ayamelexamples -Dhttp.port=9000 -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
+        command: bash -c "sbt clean stage && target/universal/stage/bin/yvideo -Dhttp.port=9000 -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
 
     ylex_prod:
         depends_on:

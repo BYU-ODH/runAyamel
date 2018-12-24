@@ -14,7 +14,7 @@ services:
         image: yvideo_beta
         ports:
          - "9003:9000"
-        command: bash -c "sbt clean stage && target/universal/stage/bin/ayamelexamples -Dhttp.port=9000 -DapplyEvolutions.default=true"
+        command: bash -c "sbt clean stage && target/universal/stage/bin/yvideo -Dhttp.port=9000 -DapplyEvolutions.default=true"
 
     ylex_beta:
         depends_on:

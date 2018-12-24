@@ -449,14 +449,14 @@ configure_server () {
     services[production]="master"
     services[beta]="develop"
 
-    if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
-        # clone the repos
-        for srvc in "${!services[@]}"; do
-            for repo in "${dependencies_remotes[@]}"; do
-                git clone -b "${services[$srvc]}" --depth 1 "$repo" server/"$srvc"/$(basename $repo) &> /dev/null
-            done
+    # clone the dependencies. We are keeping this here to preserve compatibility with the
+    # old sites' frontends. This should be removed once we are exclusively using the yvideo-client front-end
+    for srvc in "${!services[@]}"; do
+        for repo in "${dependencies_remotes[@]}"; do
+            git clone -b "${services[$srvc]}" --depth 1 "$repo" server/"$srvc"/$(basename $repo) &> /dev/null
         done
-    fi
+    done
+
     python_environment_name="env"
     if [[ ! -d "$python_environment_name" ]]; then
         echo "creating virtual environment"

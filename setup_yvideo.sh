@@ -479,6 +479,7 @@ configure_server () {
         releases=$(python download_release.py ${services[$srvc]})
         if [[ -z "$releases" ]]; then
             echo "[WARNING]: No Releases found for $srvc service"
+            continue
         fi
         for release in $releases; do
             echo "Extracting: $release"

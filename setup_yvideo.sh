@@ -437,12 +437,17 @@ configure_server () {
     # copy the certs and keys into the context folders
     # make sure to delete these files later
     if [[ -n "$YVIDEO_SERVER_KEY" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATE" ]]; then
+        n=0
         for key in $YVIDEO_SERVER_KEYS; do
-            cp $key server/$key
+            cp $key server/key$n.key
+            n=$((n + 1))
         done
+        n=0
         for crt in $YVIDEO_SITE_CERTIFICATES; do
-            cp $crt server/$crt
+            cp $crt server/cert$n.crt
+            n=$((n + 1))
         done
+
     else
         echo "[WARNING] - ssl site certificate and key not found."
     fi

@@ -432,7 +432,7 @@ configure_server () {
 
     # copy the certs and keys into the context folders
     # make sure to delete these files later
-    if [[ -n "$YVIDEO_SERVER_KEY" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATE" ]]; then
+    if [[ -n "$YVIDEO_SERVER_KEYS" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATES" ]]; then
         n=0
         for key in $YVIDEO_SERVER_KEYS; do
             cp $key server/key$n.key

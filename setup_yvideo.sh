@@ -94,7 +94,6 @@ usage () {
     echo '  YVIDEO_CONFIG_BETA      The path to the yvideo application.conf for the beta service. *Required only for beta'
     echo '  YLEX_CONFIG_PROD        The path to the ylex application.conf. *Required only for production'
     echo '  YLEX_CONFIG_BETA        The path to the ylex application.conf for the beta service. *Required only for beta'
-    echo '  YVIDEO_HTTPD_CONFIG     The path to the httpd.conf file.'
     echo '  YVIDEO_SITES_AVAILABLE  The path to the sites-available folder.'
     echo "  GITDIR                  The path to the yvideo project and all it's dependencies. Used for development. *Not required"
     echo
@@ -401,20 +400,6 @@ cleanup () {
 configure_server () {
     # the dependencies go inside here
     mkdir -p server/beta/css server/production/css server/beta/js server/production/js
-
-    # load in the httpd.conf file into the server directory
-    # this is required for the dockerfile to run.
-    # If we want to run the default config as a fallback, then we would
-    # have to change the server dockerfile.
-    # The server docker image will fail to build if this file is missing
-    if [[ -f "$YVIDEO_HTTPD_CONFIG" ]]; then
-        cp "$YVIDEO_HTTPD_CONFIG" server/httpd.conf
-    elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
-        echo "[${YVIDEO_HTTPD_CONFIG:-Environment variable YVIDEO_HTTPD_CONFIG}] does not exist."
-        echo "The environment variable YVIDEO_HTTPD_CONFIG needs to be exported to this script."
-        echo "And it needs to contain the path to a directory."
-        exit 1
-    fi
 
     # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.

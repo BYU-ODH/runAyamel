@@ -7,6 +7,8 @@ EditorWidgets
 docker-compose.dev.yml
 docker-compose.beta.yml
 docker-compose.production.yml
+yvideo.dev.yml
+ylex.dev.yml
 *.sql
 *.crt
 *.key

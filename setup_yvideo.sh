@@ -398,8 +398,11 @@ cleanup () {
 }
 
 configure_server () {
+    # The directory that contains the dockerfile we want to use
+    server_context=$(if [[ "$compose_override_file" = "$dev_compose_file" ]]; then echo server/dev; else echo server; fi)
+
     # the dependencies go inside here
-    mkdir -p server/beta/css server/production/css server/beta/js server/production/js
+    mkdir -p $server_context/beta/css $server_context/production/css $server_context/beta/js $server_context/production/js
 
     # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.
@@ -409,7 +412,7 @@ configure_server () {
     # the one that runs on port 443 with ssl enabled.
     if [[ -d "$YVIDEO_SITES_AVAILABLE" ]] && [[ $(ls -1 $YVIDEO_SITES_AVAILABLE | wc -l) -ne 0 ]]; then
         export SITES_FOLDER_NAME=${YVIDEO_SITES_AVAILABLE##*/}
-        cp -r $YVIDEO_SITES_AVAILABLE server/
+        cp -r $YVIDEO_SITES_AVAILABLE $server_context/
     elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
         echo "[WARNING] - No httpd site config loaded. Make sure that the"
         echo "            YVIDEO_SITES_AVAILABLE environment variable contains the path"
@@ -418,22 +421,27 @@ configure_server () {
         echo
     fi
 
+    if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
+        echo "Skipping releases download / ssl setup for dev mode."
+        return
+    fi
+
     # copy the certs and keys into the context folders
     # make sure to delete these files later
     if [[ -n "$YVIDEO_SERVER_KEYS" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATES" ]]; then
         n=0
         for key in $YVIDEO_SERVER_KEYS; do
-            cp $key server/key$n.key
+            cp $key $server_context/key$n.key
             n=$((n + 1))
         done
         n=0
         for crt in $YVIDEO_SITE_CERTIFICATES; do
-            cp $crt server/cert$n.crt
+            cp $crt $server_context/cert$n.crt
             n=$((n + 1))
         done
-
     else
-        echo "[WARNING] - ssl site certificate and key not found."
+        echo "[ERROR] - ssl site certificate and key not found."
+        exit 1
     fi
 
     declare -A services
@@ -470,8 +478,8 @@ configure_server () {
             echo "Extracting: $release"
             tar xf $release
         done
-        mv css/* server/$srvc/css
-        mv js/* server/$srvc/js
+        mv css/* $server_context/$srvc/css
+        mv js/* $server_context/$srvc/js
     done
     deactivate
 }
@@ -545,15 +553,12 @@ run_docker_compose () {
         fi
         # quoting like so: "$service" breaks docker-compose if it is empty
         docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" build --no-cache $service
-        docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
-        exit_code="$?"
     else
         echo "[INFO] - Using Existing Images if Available."
-        echo "$service"
-        docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
-        exit_code="$?"
-        [[ -n "$attach" ]] && [[ -n "$container" ]] && docker attach --sig-proxy=false "$container"
     fi
+    docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
+    exit_code="$?"
+    [[ -n "$attach" ]] && [[ -n "$container" ]] && docker attach --sig-proxy=false "$container"
 }
 
 cd "$scriptpath"

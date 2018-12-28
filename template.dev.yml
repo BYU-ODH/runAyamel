@@ -9,7 +9,9 @@ volumes:
 services:
     server:
         build:
-            context: server
+            context: server/dev
+            args:
+                sites_available: ${SITES_FOLDER_NAME}
             dockerfile: Dockerfile
         image: server
         ports:

@@ -511,11 +511,11 @@ configure_database () {
 }
 
 setup () {
-    configure_server
     configure_database
     if [[ -n "$template_file" ]]; then
         echo "Creating $compose_override_file"
         substitute_environment_variables "$template_file" "$compose_override_file"
+        configure_server
     elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
         echo "Script Broken Error: "
         echo "Using $compose_override_file but no template file was specified."

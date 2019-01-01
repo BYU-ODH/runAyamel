@@ -401,9 +401,6 @@ configure_server () {
     # The directory that contains the dockerfile we want to use
     server_context=$(if [[ "$compose_override_file" = "$dev_compose_file" ]]; then echo server/dev; else echo server; fi)
 
-    # the dependencies go inside here
-    mkdir -p $server_context/beta/css $server_context/production/css $server_context/beta/js $server_context/production/js
-
     # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.
     # The conf files can contain any apache configuration and they will be included by the httpd.conf file
@@ -425,6 +422,9 @@ configure_server () {
         echo "Skipping releases download / ssl setup for dev mode."
         return
     fi
+
+    # the dependencies go inside here
+    mkdir -p $server_context/beta/css $server_context/production/css $server_context/beta/js $server_context/production/js
 
     # copy the certs and keys into the context folders
     # make sure to delete these files later

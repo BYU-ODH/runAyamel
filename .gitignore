@@ -17,3 +17,4 @@ server/beta**
 server/production**
 env
 *.tar
+.DS_Store

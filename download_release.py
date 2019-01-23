@@ -3,6 +3,7 @@
 import requests
 import threading
 import sys
+import os.path
 
 base_url = 'https://github.com/BYU-ODH/'
 api_base_url = 'https://api.github.com/repos/BYU-ODH/%s/releases'
@@ -11,7 +12,8 @@ repos = [
     'yvideojs',
     'EditorWidgets',
     'subtitle-timeline-editor',
-    'TimedText'
+    'TimedText',
+    'yvideo-client'
 ]
 
 class Worker(threading.Thread):
@@ -28,24 +30,27 @@ class Worker(threading.Thread):
                 if rel['prerelease'] == prerelease and len(rel['assets']) == 1:
                     release = rel['assets'][0]['browser_download_url']
                     filename = self.repo + '-' + rel['assets'][0]['name']
-                    download_request = requests.get(release, stream=True)
-                    if download_request.status_code == 302:
-                        print("Redirecting to %s" % download_request.headers['Location'])
-                        download_request = requests.get(download_request.headers['Location'], stream=True)
-                    with open(filename, 'wb') as f:
-                        for chunk in download_request.iter_content(chunk_size=1024):
-                            if chunk: # filter out keep-alive new chunks
-                                f.write(chunk)
-                    print(filename)
-                    break
+                    if os.path.isfile(filename):
+                        print("%s release for %s already downloaded" % (filename, self.repo))
+                    else:
+                        download_request = requests.get(release, stream=True)
+                        if download_request.status_code == 302:
+                            print("Redirecting to %s" % download_request.headers['Location'])
+                            download_request = requests.get(download_request.headers['Location'], stream=True)
+                        with open(filename, 'wb') as f:
+                            for chunk in download_request.iter_content(chunk_size=1024):
+                                if chunk: # filter out keep-alive new chunks
+                                    f.write(chunk)
+                        print("Downloaded %s" % filename)
+                        break
 
 def download(prerelease):
     workers = []
-    for x in range(0, 4):
+    for x in range(0, len(repos)):
         workers.append(Worker(repos[x]))
         workers[x].start()
 
-    for x in range(0, 4):
+    for x in range(0, len(repos)):
         workers[x].join()
 
 if len(sys.argv) > 1:

@@ -1,0 +1,22 @@
+version: '3.1'
+
+services:
+    server:
+        build:
+            context: ../server
+            dockerfile: Dockerfile
+            args:
+                sites_available: ${SITES_FOLDER_NAME}
+        image: server
+        ports:
+         - "80:80"
+         - "443:443"
+        secrets:
+         - server_key
+         - server_cert
+
+secrets:
+    server_key:
+        external: true
+    server_cert:
+        external: true

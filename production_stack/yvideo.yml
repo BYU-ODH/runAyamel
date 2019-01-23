@@ -1,0 +1,20 @@
+version: '3.1'
+
+services:
+    yvideo:
+        build:
+            context: ../$mode/yvideo
+            args:
+                sbt_version: 0.13.8
+            dockerfile: Dockerfile
+        image: yvideo
+        command: bash -c "sbt clean stage && target/universal/stage/bin/yvideo -Dhttp.port=9000 -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$(cat $$MYSQL_PASSWORD_FILE) -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
+        secrets:
+         - mysql_password
+        environment:
+            MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+            MYSQL_USER: yvideo
+
+secrets:
+    mysql_password:
+        external: true

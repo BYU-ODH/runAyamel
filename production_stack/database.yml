@@ -1,0 +1,25 @@
+version: '3.1'
+
+services:
+    database:
+        build: ../db
+        image: yvideodb
+        volumes:
+         - ${YVIDEO_SQL_DATA}:/var/lib/mysql
+        secrets:
+         - mysql_root_password
+         - mysql_password
+        environment:
+            MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+            MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+            MYSQL_USER: yvideo
+
+secrets:
+    mysql_root_password:
+        external: true
+    mysql_password:
+        external: true
+
+volumes:
+    database:
+

@@ -1,0 +1,17 @@
+version: '3.1'
+
+services:
+    yvideo:
+        depends_on:
+            - database
+        build:
+            context: ../$mode/yvideo
+            args:
+                sbt_version: 0.13.8
+            dockerfile: Dockerfile
+        image: yvideo
+        command: bash -c "sbt test -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$MYSQL_PASSWORD -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
+        environment:
+            MYSQL_PASSWORD: root
+            MYSQL_USER: root
+

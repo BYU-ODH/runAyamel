@@ -1,0 +1,20 @@
+version: '3.1'
+
+services:
+    ylex:
+        depends_on:
+            - database
+        build:
+            context: ../$mode/ylex
+            args:
+                sbt_version: 0.13.8
+            dockerfile: Dockerfile
+        image: ylex
+        command: bash -c "sbt test -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$MYSQL_PASSWORD -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
+        environment:
+            MYSQL_USER: root
+            MYSQL_PASSWORD: test
+
+secrets:
+    mysql_password:
+        external: true

@@ -15,11 +15,12 @@ RUN sed -i \
 
 # Change ssl cert and key file names
 RUN sed -i \
-        -e 's/\(SSLCertificateFile "\/usr\/local\/apache2\/conf\/\)server.crt"/\1cert0.crt"/' \
-        -e 's/\(SSLCertificateKeyFile "\/usr\/local\/apache2\/conf\/\)server.key"/\1key0.key"/' \
+        -e 's/\(SSLCertificateFile \)"\/usr\/local\/apache2\/conf\/server.crt"/\1"\/run\/secrets\/server_cert"/' \
+        -e 's/\(SSLCertificateKeyFile \)"\/usr\/local\/apache2\/conf\/server.key"/\1"\/run\/secrets\/server_key"/' \
         conf/extra/httpd-ssl.conf
 
-COPY *.key *.crt /usr/local/apache2/conf/
+RUN rm htdocs/index.html
+
 COPY $sites_available /usr/local/apache2/conf/extra/$sites_available
 
 ADD production /usr/local/apache2/htdocs/production

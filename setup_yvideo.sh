@@ -3,10 +3,13 @@
 default=""
 attach=""
 remove=""
-restart_service=""
 full_remove=""
 build=""
 recreate="--no-recreate"
+cache=""
+update=""
+force=""
+dl_releases="true"
 no_deps=""
 clean=""
 setup_only=""
@@ -16,15 +19,13 @@ test_local=""
 project_name="yvideo"
 git_dir=${GITDIR:-~/Documents/GitHub}
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
-service=""
-rebuild_service=""
-compose_override_file=""
-dev_compose_file="docker-compose.dev.yml"
-beta_compose_file="docker-compose.beta.yml"
-production_compose_file="docker-compose.production.yml"
-test_compose_file="docker-compose.test.yml"
-template_file=""
-exit_code="0"
+services=""
+dev_compose_dir="dev_stack"
+production_compose_dir="production_stack"
+beta_compose_dir="$production_compose_dir"
+test_compose_dir="travis_compose_files"
+compose_file_dir=""
+exit_code=0
 container=""
 
 declare -A repos # Associative array! :) used in the compose_dev function
@@ -49,38 +50,36 @@ usage () {
     echo '                                       The containers will be run in the background unless attach is specified'
     echo "          [--remove           | -r]    Removes all of the containers that start with the project prefix: $project_name"
     echo '                                       Containers are removed before anything else is done.'
-    echo '          [ -frd |-frb |-frp |-frt]    Removes everything in the docker-compose project using the corresponding compose override file and docker-compose down.'
+    echo '          [ -frd |-frb |-frp |-frt]    Removes everything in the docker-compose project using docker-compose down.'
     echo '          [--clean            | -c]    Remove all of the created files in the yvideo-deploy directory.'
     echo '                                       Cleanup is run before any other setup.'
     echo '                                       This option can be used without one of the required params.'
     echo '                                       If specified twice, cleanup will be called before and after setup.'
     echo '          [--setup-only           ]    Will set up all of the specified services but will not run docker-compose.'
     echo "                                       Mainly for development and testing of $project_name"
-    echo '[--rebuild <service>|-rb <service>]    Will rebuild the given service even if they have not changed.'
-    echo '                                       Passes --build $service --no-cache to `docker-compose up`'
-    echo "                                       If --no-deps is not specified, this will also rebuild the service's dependencies."
-    echo "                                       Valid services include: server, database, beta, prod."
-    echo '          [--build                ]    Used to rebuild all of the services at once.'
-    echo '          [--no-deps          |-nd]    Passes --no-deps to `docker-compose build` which when paired with --rebuild, will'
-    echo "                                       only rebuild the provided service as opposed to all services in the compose file."
-    echo '          [--force-recreate   | -x]    Will recreate the containers even if they are up to date.'
-    echo '                                       Containers will no be updated if this flag is not specified.'
-    echo '                                       Good for use with --build because docker does not check the code changes in the build image and'
-    echo '                                       will therefore not recreate the container.'
-    echo '                                       Passes --force-recreate to `docker-compose up`'
-    echo '          [--service          | -s]    Specify a service. This can be used in conjunction with --force-recreate in order to'
-    echo '                                       only recreate one container. However, this option is overriden by the service specified by --rebuild.'
+    echo '          [--build                ]    Used to build specified services.'
+    echo '          [--nc                   ]    Container building process will not use cached images.'
+    echo '          [--nr                   ]    Static dependency releases will not be downloaded.'
+    echo '          [--force            | -f]    Will recreate the containers even if they are up to date.'
+    echo '                                       Existing containers will not be updated if this flag is not specified.'
+    echo '                                       Passes --force to `docker service update`'
     echo '          [--restart          |-rs]    Restarts the specified service.'
+    echo '          [--services=...  |-s=...]    Specify which services to run.'
+    echo '                                       Provide a string with the following characters. The letters correspond to services:'
+    echo '                                       d -> database'
+    echo '                                       s -> server'
+    echo '                                       v -> video'
+    echo '                                       x -> ylex'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
     echo
-    echo '          [--production       | -p]    Use the production docker-compose override file.'
-    echo '          [--beta             | -b]    Use the beta docker-compose override file.'
-    echo '          [--dev              | -d]    Use the development docker-compose override file.'
-    echo '          [--test             | -t]    Use the development docker-compose override file.'
+    echo '          [--production       | -p]    Use the production docker-compose files.'
+    echo '          [--beta             | -b]    Use the beta docker-compose files.'
+    echo '          [--dev              | -d]    Use the development docker-compose files.'
+    echo '          [--test             | -t]    Use the development docker-compose files.'
     echo '                                       Use volumes and run tests locally'
-    echo '          [--travis               ]    Use the testing docker-compose override file.'
+    echo '          [--travis               ]    Use the testing docker-compose files.'
     echo '                                       Travis specific setup'
     echo
     echo
@@ -110,132 +109,179 @@ usage () {
 options () {
     expect_name=""
     for opt in "$@"; do
-        if [[ "$opt" = "--default" ]] || [[ "$opt" = "-e" ]];
+        if [[ "$opt" == "--default" ]] || [[ "$opt" == "-e" ]];
         then
             default="true"
 
-        elif [[ "$opt" = "--dev" ]] || [[ "$opt" = "-d" ]];
+        elif [[ "$opt" == "--dev" ]] || [[ "$opt" == "-d" ]];
         then
-            template_file="template.dev.yml"
-            compose_override_file="$dev_compose_file"
-            container="$project_name""_yvideo_dev_1"
+            compose_file_dir="$dev_compose_dir"
+            mode="dev"
 
-        elif [[ "$opt" = "--production" ]] || [[ "$opt" = "-p" ]];
+        elif [[ "$opt" == "--production" ]] || [[ "$opt" == "-p" ]];
         then
-            template_file="template.production.yml"
-            compose_override_file="$production_compose_file"
-            container="$project_name""_yvideo_prod_1"
+            compose_file_dir="$production_compose_dir"
+            mode="prod"
 
-        elif [[ "$opt" = "--beta" ]] || [[ "$opt" = "-b" ]];
+        elif [[ "$opt" == "--beta" ]] || [[ "$opt" == "-b" ]];
         then
-            template_file="template.beta.yml"
-            compose_override_file="$beta_compose_file"
-            container="$project_name""_yvideo_beta_1"
+            compose_file_dir="$beta_compose_dir"
+            mode="beta"
 
-        elif [[ "$opt" = "--travis" ]];
+        elif [[ "$opt" == "--travis" ]];
         then
-            template_file=""
-            compose_override_file="$test_compose_file"
-            container="$project_name""_yvideo_test_1"
+            compose_file_dir="$test_compose_dir"
             travis=true
+            mode="test"
 
-        elif [[ "$opt" = "--test" ]] || [[ "$opt" = "-t" ]];
+        elif [[ "$opt" == "--test" ]] || [[ "$opt" == "-t" ]];
         then
-            template_file="template.dev.yml"
+            compose_file_dir="$dev_compose_dir"
             compose_override_file="$dev_compose_file"
-            container="$project_name""_yvideo_dev_1"
             test_local=true
+            mode="dev"
 
-        elif [[ "$opt" = "--no-deps" ]] || [[ "$opt" = "-nd" ]];
-        then
-            no_deps="--no-deps"
-
-        elif [[ "$opt" =~ ^\-\-rebuild=.*$ ]] || [[ "$opt" =~ ^\-rb=.*$ ]];
-        then
-            build=true
-            rebuild_service=${opt##*=}
-
-        elif [[ "$opt" = "--build" ]];
+        elif [[ "$opt" == "--build" ]];
         then
             build=true
 
-        elif [[ "$opt" = "--force-recreate" ]] || [[ "$opt" = "-x" ]];
+        elif [[ "$opt" =~ ^\-\-services=.*$ ]] || [[ "$opt" =~ ^\-s=.*$ ]];
         then
-            recreate="--force-recreate"
+            service_list=${opt##*=}
 
-        elif [[ "$opt" =~ ^\-\-service=.*$ ]] || [[ "$opt" =~ ^\-s=.*$ ]];
-        then
-            service=${opt##*=}
-
-        elif [[ "$opt" = "--help" ]] || [[ "$opt" = "-h" ]];
+        elif [[ "$opt" == "--help" ]] || [[ "$opt" == "-h" ]];
         then
             usage && exit 1
 
-        elif [[ "$opt" = "--attach" ]] || [[ "$opt" = "-a" ]];
+        elif [[ "$opt" == "--attach" ]] || [[ "$opt" == "-a" ]];
         then
             attach=true
 
-        elif [[ "$opt" = "--remove" ]] || [[ "$opt" = "-r" ]];
+        elif [[ "$opt" == "--remove" ]] || [[ "$opt" == "-r" ]];
         then
             remove=true
 
-        elif [[ "$opt" = "--restart" ]] || [[ "$opt" = "-rs" ]];
+        elif [[ "$opt" == "--restart" ]] || [[ "$opt" == "-rs" ]];
         then
             restart_service=true
 
-        elif [[ "$opt" = "-frd" ]];
+        elif [[ "$opt" == "--force" ]] || [[ "$opt" == "-f" ]];
+        then
+            force="--force"
+
+        elif [[ "$opt" == "--update" ]] || [[ "$opt" == "-u" ]];
+        then
+            update="true"
+
+        elif [[ "$opt" == "-frd" ]];
         then
             full_remove=true
             compose_override_file="$dev_compose_file"
 
-        elif [[ "$opt" = "-frb" ]];
+        elif [[ "$opt" == "-frb" ]];
         then
             full_remove=true
             compose_override_file="$beta_compose_file"
 
-        elif [[ "$opt" = "-frp" ]];
+        elif [[ "$opt" == "-frp" ]];
         then
             full_remove=true
             compose_override_file="$production_compose_file"
 
-        elif [[ "$opt" = "-frt" ]];
+        elif [[ "$opt" == "-frt" ]];
         then
             full_remove=true
             compose_override_file="$test_compose_file"
 
-        elif [[ "$opt" = "--clean" ]] || [[ "$opt" = "-c" ]];
+        elif [[ "$opt" == "--clean" ]] || [[ "$opt" == "-c" ]];
         then
             if [[ -n "$clean" ]]; then
                 super_duper_clean=true
             fi
             clean=true
 
-        elif [[ "$opt" = "--setup-only" ]];
+        elif [[ "$opt" == "--setup-only" ]];
         then
             setup_only=true
+
+        elif [[ "$opt" == "--nc" ]];
+        then
+            cache="--no-cache"
+
+        elif [[ "$opt" == "--nr" ]];
+        then
+            dl_releases=""
+
         else
             echo "Argument: [$opt] not recognized."
             exit 1
         fi
     done
 
-    if [[ -z "$compose_override_file" ]] && [[ -z "$remove" ]] && [[ -z "$clean" ]]; then
+    if [[ -z "$mode" ]] && [[ -z "$update" ]] && [[ -z "$remove" ]] && [[ -z "$clean" ]]; then
         echo "[Error]: No mode specified"
         echo
-        [[ -n $(which less) ]] && usage | less && exit 1
         usage
         exit 1
     fi
 }
 
-remove_containers () {
-    # remove all of the containers that start with yvideo
-    container_ids=$(docker ps -aq -f name=${project_name}_*)
-    if [[ -n "$container_ids" ]]; then
-        # check non-empty so there are no errors printed
-        # can't simply use variable substitution as the output contains newlines
-        # clearest is to simply call ps -a twice
-        docker rm -f $(docker ps -aq -f name=${project_name}_*)
+## $1 is the string of services letters: dsvx
+get_services () {
+    ## Gets the names of the files to use in the build and deploy steps
+    ## as well as the services that need to be run
+    commands=$(python3 compose_files.py -s ${1:-"dsvx"} -p "$compose_file_dir/")
+    ## prevent bash from parsing the echo output
+    OLD_IFS=$IFS
+    IFS=
+    ## The following variables contain the flags for which services are to be built/deployed
+    ## The services variables is just the list of services without file extensions or other flags
+    ## A default (dsvx) run with "production_stack" as the value of $compose_file_dir will yield the following variables:
+    ##      build_flags="-f production_stack/database.yml -f production_stack/server.yml -f production_stack/yvideo.yml -f production_stack/ylex.yml"
+    ##      deploy_flags="-c production_stack/database.yml -c production_stack/server.yml -c production_stack/yvideo.yml -c production_stack/ylex.yml"
+    ##      services="database server yvideo ylex"
+    ## The compose_files.py script outputs three newline separated strings
+    ## For this reason we have to use sed to get the line that corresponds to the certain variable
+    ## The IFS needs to be changed temporarily in order the allow the (echo | ...) command to be
+    ## processed as 3 lines rather than joining them into one line
+    build_flags=$(echo $commands | sed -e "1q;d")
+    deploy_flags=$(echo  $commands | sed -e "2q;d")
+    services=$(echo $commands | sed -e "3q;d")
+    IFS=$OLD_IFS
+}
+
+remove_services () {
+    if [[ -n "$mode" ]]; then
+        if [[ -z "$service_list" ]]; then
+            docker stack rm $mode
+        else
+            get_services $service_list
+            for s in $services; do
+                docker service rm $mode"_"$s
+            done
+        fi
+    else
+        echo "Please specify a mode with one of the following:"
+        echo "  -p, -b, -d, -t, --travis"
+        exit 1
+    fi
+}
+
+update_services () {
+    if [[ -z "$service_list" ]]; then
+        echo "Kindly specify a service like so:"
+        echo "$scriptpath/setup_yvideo.sh ... -s=[dsvx]"
+        exit 1
+    fi
+    if [[ -n "$mode" ]]; then
+        [[ -z "$services" ]] && get_services $service_list
+        for s in $services; do
+            docker service update $deploy_flags "$mode""_""$s" $force
+        done
+    else
+        echo "Please specify a mode with one of the following:"
+        echo "  -p, -b, -d, -t, --travis"
+        exit 1
     fi
 }
 
@@ -289,45 +335,36 @@ compose_dev () {
         repos["$repo"]="$user_dir"
     done
 
-    # set command which will run in the container
-    # dev and test use the same dockerfile
-    if [[ -n "$test_local" ]]; then
-        dev_command="test"
-    else
-        dev_command="run"
-    fi
-    export dev_command
     export yvideo="${repos[yvideo]}"
     export yvideojs="${repos[yvideojs]}"
     export subtitle_timeline_editor="${repos[subtitle-timeline-editor]}"
     export EditorWidgets="${repos[EditorWidgets]}"
     export TimedText="${repos[TimedText]}"
     export yvideo_dict_lookup="${repos[yvideo-dict-lookup]}"
-    substitute_environment_variables "template.dev.yml" "docker-compose.dev.yml"
-
-    if [[ "$service" = "yvideo_dev" ]]; then
-       substitute_environment_variables yvideotemplate.dev.yml yvideo.dev.yml
-       cat yvideo.dev.yml >> docker-compose.dev.yml
-    elif [[ "$service" = "ylex_dev" ]]; then
-       substitute_environment_variables ylextemplate.dev.yml ylex.dev.yml
-       cat ylex.dev.yml >> docker-compose.dev.yml
-    else
-       substitute_environment_variables yvideotemplate.dev.yml yvideo.dev.yml
-       substitute_environment_variables ylextemplate.dev.yml ylex.dev.yml
-       cat yvideo.dev.yml >> docker-compose.dev.yml
-       cat ylex.dev.yml >> docker-compose.dev.yml
-    fi
 }
 
 # used when --travis is specified
 compose_test () {
 
-    if [[ -z "$BRANCH" ]]; then
+    if [[ -z "$BRANCH" ]] || [[ -z "$TRAVIS_BUILD_DIR" ]]; then
         echo "--travis flag is meant for use on travis CI."
-        echo "To test this mode, create an environment variable named BRANCH that"
-        echo "contains the name of the branch that you want to test."
+        echo "The BRANCH and TRAVIS_BUILD_DIR env variables need to be exported to this script."
         exit 1
     fi
+
+    if [[ "$TRAVIS_BUILD_DIR" == *yvideo-dict-lookup ]];then
+        test_repo="ylex"
+        get_services dx
+    else
+        test_repo="yvideo"
+        get_services dv
+    fi
+    # Need to build from scratch on travis
+    build=true
+
+    # Copy in code from travis build dir
+    cp -r $TRAVIS_BUILD_DIR test/$test_repo
+
     if [[ "$BRANCH" != "master" ]]; then
         # all branches of yvideo use the develop branch of the dependencies except for
         # the master branch which uses the master branch of the dependencies
@@ -355,7 +392,7 @@ compose_production () {
         cp "$YVIDEO_CONFIG" "$2"/yvideo/application.conf
     else
         echo "[$YVIDEO_CONFIG] does not exist."
-        echo "The environment variable YVIDEO_CONFIG_[BETA | PROD] needs to be exported to this script in order to run yvideo in production mode."
+        echo "The environment variable YVIDEO_CONFIG_[BETA|PROD] needs to be exported to this script in order to run yvideo in production mode."
         exit 1
     fi
 
@@ -367,28 +404,7 @@ compose_production () {
         cp "$YLEX_CONFIG" "$2"/ylex/application.conf
     else
         echo "[$YLEX_CONFIG] does not exist."
-        echo "The environment variable YLEX_CONFIG_[BETA | PROD] needs to be exported to this script in order to run yvideo in production mode."
-        exit 1
-    fi
-}
-
-# $1 is the template file ex: template.dev.yml
-# and corresponds to the docker-compose template we want to fill out
-# with environment variables
-# $2 is the name of the output file
-substitute_environment_variables () {
-    echo "Substituting Environment variables for $1 --> $2"
-    if [[ ! -f "$1" ]]; then
-        echo "[ERROR]: substitute environment variables: $1 does not exist."
-        exit 1
-    fi
-    envsubst_location=$(which envsubst)
-    if [[ -n envsubst_location ]]; then
-        cat "$1" | envsubst > "$2"
-    else
-        echo "For the time being, this script requires the program envsubst from the package gettext to be installed."
-        echo "It should be easy to install on ubuntu and mac using apt and brew respectively."
-        echo "Now exiting..."
+        echo "The environment variable YLEX_CONFIG_[BETA|PROD] needs to be exported to this script in order to run yvideo in production mode."
         exit 1
     fi
 }
@@ -399,7 +415,7 @@ cleanup () {
 
 configure_server () {
     # The directory that contains the dockerfile we want to use
-    server_context=$(if [[ "$compose_override_file" = "$dev_compose_file" ]]; then echo server/dev; else echo server; fi)
+    server_context=$(if [[ "$mode" == "$test" ]]; then echo server/dev; else echo server; fi)
 
     # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.
@@ -410,7 +426,7 @@ configure_server () {
     if [[ -d "$YVIDEO_SITES_AVAILABLE" ]] && [[ $(ls -1 $YVIDEO_SITES_AVAILABLE | wc -l) -ne 0 ]]; then
         export SITES_FOLDER_NAME=${YVIDEO_SITES_AVAILABLE##*/}
         cp -r $YVIDEO_SITES_AVAILABLE $server_context/
-    elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
+    elif [[ "$mode" != "test" ]]; then
         echo "[WARNING] - No httpd site config loaded. Make sure that the"
         echo "            YVIDEO_SITES_AVAILABLE environment variable contains the path"
         echo "            to a directory that contains the virtual host configurations for"
@@ -418,31 +434,13 @@ configure_server () {
         echo
     fi
 
-    if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
+    if [[ "$mode" == "dev" ]]; then
         echo "Skipping releases download / ssl setup for dev mode."
         return
     fi
 
     # the dependencies go inside here
     mkdir -p $server_context/beta/css $server_context/production/css $server_context/beta/js $server_context/production/js
-
-    # copy the certs and keys into the context folders
-    # make sure to delete these files later
-    if [[ -n "$YVIDEO_SERVER_KEYS" ]] && [[ -n "$YVIDEO_SITE_CERTIFICATES" ]]; then
-        n=0
-        for key in $YVIDEO_SERVER_KEYS; do
-            cp $key $server_context/key$n.key
-            n=$((n + 1))
-        done
-        n=0
-        for crt in $YVIDEO_SITE_CERTIFICATES; do
-            cp $crt $server_context/cert$n.crt
-            n=$((n + 1))
-        done
-    else
-        echo "[ERROR] - ssl site certificate and key not found."
-        exit 1
-    fi
 
     declare -A services
     services[production]="master"
@@ -456,39 +454,45 @@ configure_server () {
         done
     done
 
-    python_environment_name="env"
-    if [[ ! -d "$python_environment_name" ]]; then
-        echo "creating virtual environment"
-        virtualenv -p ${1:-python3} $python_environment_name
-    fi
-    . "$python_environment_name/bin/activate"
-    # load requirements file
-    python_requirements="requirements.txt"
-    pip install -qr $python_requirements
-    # download the dependency releases into the server folder using the download_releases.py script
-    # it requires the requests package which we install here in a virtualenv
-    for srvc in "${!services[@]}"; do
-        echo "Downloading $srvc releases..."
-        releases=$(python download_release.py ${services[$srvc]})
-        if [[ -z "$releases" ]]; then
-            echo "[WARNING]: No Releases found for $srvc service"
-            continue
+    if [[ -n "$dl_releases" ]]; then
+        python_environment_name="env"
+        if [[ ! -d "$python_environment_name" ]]; then
+            if [[ -z "$(which virtualenv)" ]]; then
+                echo "Virtualenv not installed. Skipping release download"
+                return
+            fi
+            echo "creating virtual environment"
+            virtualenv -p python3 $python_environment_name
         fi
-        for release in $releases; do
-            echo "Extracting: $release"
-            tar xf $release
+        . "$python_environment_name/bin/activate"
+        # load requirements file
+        python_requirements="requirements.txt"
+        pip install -qr $python_requirements
+        # download the dependency releases into the server folder using the download_release.py script
+        # it requires the requests package which we install here in a virtualenv
+        for srvc in "${!services[@]}"; do
+            echo "Downloading $srvc releases..."
+            releases=$(python download_release.py ${services[$srvc]})
+            if [[ -z "$releases" ]]; then
+                echo "[WARNING]: No Releases found for $srvc service"
+                continue
+            fi
+            for release in $releases; do
+                echo "Extracting: $release"
+                tar xf $release
+            done
+            mv css/* $server_context/$srvc/css
+            mv js/* $server_context/$srvc/js
         done
-        mv css/* $server_context/$srvc/css
-        mv js/* $server_context/$srvc/js
-    done
-    deactivate
+        deactivate
+    fi
 }
 
 configure_database () {
     # Check if data volume env var is defined and the path exists if we need it
     if [[ ! -d "$YVIDEO_SQL_DATA" ]]; then
         # We don't use database volumes for testing on travis
-        if [[ "$compose_override_file" != "$test_compose_file" ]]; then
+        if [[ "$mode" != "test" ]]; then
             echo "[${YVIDEO_SQL_DATA:-Environment Variable YVIDEO_SQL_DATA}] does not exist."
             echo "The environment variable YVIDEO_SQL_DATA needs to be exported to this script."
             echo "And it needs to contain the path to a directory."
@@ -496,8 +500,16 @@ configure_database () {
         fi
     fi
 
+    # check if the docker secrets exist
+    # only issues a warning because it is hard to say when we will or won't be running the mysql service
+    docker secret inspect mysql_root_password &>/dev/null
+    [[ $? -ne 0 ]] && echo "[WARNING] - MYSQL ROOT PASSWORD SECRET NOT SET"
+
+    docker secret inspect mysql_password &>/dev/null
+    [[ $? -ne 0 ]] && echo "[WARNING] - MYSQL PASSWORD SECRET NOT SET"
+
     # Special case for when running from within travis
-    if [[ "$compose_override_file" = "$test_compose_file" ]]; then
+    if [[ "$mode" == "test" ]]; then
         # copy the travis sql files from the test folder
         cp test/*.sql db/
     elif [[ -d "$YVIDEO_SQL" ]]; then
@@ -511,69 +523,81 @@ configure_database () {
 }
 
 setup () {
-    configure_database
-    if [[ -n "$template_file" ]]; then
-        echo "Creating $compose_override_file"
-        substitute_environment_variables "$template_file" "$compose_override_file"
-        configure_server
-    elif [[ "$compose_override_file" != "$test_compose_file" ]]; then
-        echo "Script Broken Error: "
-        echo "Using $compose_override_file but no template file was specified."
-        echo "This should not happen...exiting"
+    if [[ -z "$compose_file_dir" ]]; then
+        echo "Please specify a directory with docker-compose config files using one of the following:"
+        echo "  -p, -b, -d, -t, --travis"
         exit 1
     fi
 
-    if [[ "$compose_override_file" = "$dev_compose_file" ]]; then
-        compose_dev
-    elif [[ "$compose_override_file" = "$production_compose_file" ]]; then
-        branchname="master"
-        YVIDEO_CONFIG="$YVIDEO_CONFIG_PROD"
-        YLEX_CONFIG="$YLEX_CONFIG_PROD"
-        compose_production $branchname "prod"
-    elif [[ "$compose_override_file" = "$beta_compose_file" ]]; then
-        branchname="develop"
-        YVIDEO_CONFIG="$YVIDEO_CONFIG_BETA"
-        YLEX_CONFIG="$YLEX_CONFIG_BETA"
-        compose_production $branchname "beta"
-    elif [[ "$compose_override_file" = "$test_compose_file" ]]; then
-        compose_test
+    ## save the service names into $service among other things
+    get_services $service_list
+
+    if [[ "$services" == *yvideo* ]] || [[ "$services" == *ylex* ]]; then
+        if [[ "$mode" == "dev" ]]; then
+            compose_dev
+        elif [[ "$mode" == "prod" ]]; then
+            branchname="master"
+            YVIDEO_CONFIG="$YVIDEO_CONFIG_PROD"
+            YLEX_CONFIG="$YLEX_CONFIG_PROD"
+            compose_production $branchname $mode
+        elif [[ "$mode" == "beta" ]]; then
+            branchname="develop"
+            YVIDEO_CONFIG="$YVIDEO_CONFIG_BETA"
+            YLEX_CONFIG="$YLEX_CONFIG_BETA"
+            compose_production $branchname $mode
+        elif [[ "$mode" == "test" ]]; then
+            [[ "$services" != *database* ]] && configure_database $compose_file_dir
+            compose_test
+        fi
+    fi
+
+    if [[ "$services" == *server* ]]; then
+        configure_server $compose_file_dir
+    fi
+
+    if [[ "$services" == *database* ]]; then
+        configure_database $compose_file_dir
     fi
 }
 
 run_docker_compose () {
-    echo "Creating Containers..."
-
     if [[ -n $build ]]; then
-        if [[ -n "$rebuild_service" ]]; then
-            service="$rebuild_service"
-            echo "[INFO] - Going to rebuild $service"
-        else
-            service=""
-            echo "[WARNING] - Going to rebuild all services."
+        export mode=$mode
+        docker-compose $build_flags build $cache
+        exit_code=$?
+        if [[ $exit_code -ne 0 ]]; then
+            echo "[ERROR] - Build Failed with error Code $exit_code"
+            exit $exit_code
         fi
-        # quoting like so: "$service" breaks docker-compose if it is empty
-        docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" build --no-cache $service
-    else
-        echo "[INFO] - Using Existing Images if Available."
     fi
-    docker-compose -p $project_name -f docker-compose.yml -f "$compose_override_file" up -d $recreate $no_deps $service
-    exit_code="$?"
+}
+
+start_services () {
+    docker stack deploy $deploy_flags $mode
+    exit_code=$?
     [[ -n "$attach" ]] && [[ -n "$container" ]] && docker attach --sig-proxy=false "$container"
+}
+
+run_travis_tests () {
+    # travis test mode without docker swarm
+    docker-compose $build_flags up -d
+    exit_code=$?
 }
 
 cd "$scriptpath"
 options "$@"
-[[ -n "$restart_service" ]] && stop_start_service $service && exit "$exit_code"
-[[ -n "$remove" ]] && remove_containers
-[[ -n "$clean" ]]                 && cleanup
-[[ -n "$full_remove" ]] && [[ -n "$compose_override_file" ]] && echo "Running docker-compose down" && docker_compose_down
-# exit if full remove ran
-[[ -n "$full_remove" ]] && exit $?
-[[ -n "$compose_override_file" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
-# remove any copied keys and certificates
-rm -f server/*.key
-rm -f server/*.crt
-[[ -n "$super_duper_clean" ]]     && cleanup
-# use the docker-compose up command exit code rather than whatever the last line may output
-exit "$exit_code"
+[[ -n "$update" ]] && update_services && exit
+[[ -n "$remove" ]] && remove_services && exit
+[[ -n "$clean" ]] && cleanup
+[[ -n "$compose_file_dir" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
+
+if [[ "$mode" == "test" ]]; then
+    run_travis_tests
+else
+    start_services
+fi
+
+[[ -n "$super_duper_clean" ]] && cleanup
+# use the docker command exit code rather than whatever the last line may output
+exit $exit_code
 

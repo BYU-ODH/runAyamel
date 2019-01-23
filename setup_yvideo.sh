@@ -591,9 +591,9 @@ options "$@"
 [[ -n "$clean" ]] && cleanup
 [[ -n "$compose_file_dir" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
 
-if [[ "$mode" == "test" ]]; then
+if [[ -n "$compose_file_dir" ]] && [[ "$mode" == "test" ]]; then
     run_travis_tests
-else
+elif [[ -n "$compose_file_dir" ]]; then
     start_services
 fi
 

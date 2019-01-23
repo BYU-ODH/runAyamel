@@ -5,5 +5,7 @@ services:
         build: ../db
         image: yvideodb
         environment:
-            MYSQL_ROOT_PASSWORD: test
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_USER: travis
+            MYSQL_PASSWORD: test
 

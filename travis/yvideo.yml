@@ -12,6 +12,6 @@ services:
         image: yvideo
         command: bash -c "sbt test -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$MYSQL_PASSWORD -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
         environment:
-            MYSQL_PASSWORD: root
-            MYSQL_USER: root
+            MYSQL_USER: travis
+            MYSQL_PASSWORD: test
 

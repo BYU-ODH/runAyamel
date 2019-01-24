@@ -25,6 +25,8 @@ production_compose_dir="production_stack"
 beta_compose_dir="$production_compose_dir"
 test_compose_dir="travis"
 compose_file_dir=""
+mode=""
+branchname=""
 exit_code=0
 container=""
 
@@ -122,11 +124,13 @@ options () {
         then
             compose_file_dir="$production_compose_dir"
             mode="prod"
+            branchname="master"
 
         elif [[ "$opt" == "--beta" ]] || [[ "$opt" == "-b" ]];
         then
             compose_file_dir="$beta_compose_dir"
             mode="beta"
+            branchname="develop"
 
         elif [[ "$opt" == "--travis" ]];
         then
@@ -449,20 +453,15 @@ configure_server () {
     fi
 
     # the dependencies go inside here
-    mkdir -p $server_context/beta/css $server_context/production/css $server_context/beta/js $server_context/production/js
-
-    declare -A services
-    services[production]="master"
-    services[beta]="develop"
+    mkdir -p $server_context/static/css $server_context/static/js
 
     # clone the dependencies. We are keeping this here to preserve compatibility with the
     # old sites' frontends. This should be removed once we are exclusively using the yvideo-client front-end
-    for srvc in "${!services[@]}"; do
-        for repo in "${dependencies_remotes[@]}"; do
-            git clone -b "${services[$srvc]}" --depth 1 "$repo" $server_context/"$srvc"/$(basename $repo) &> /dev/null
-        done
+    for repo in "${dependencies_remotes[@]}"; do
+        git clone -b $branchname --depth 1 "$repo" $server_context/static/$(basename $repo) &> /dev/null
     done
 
+    ## Download releases for static file dependencies
     if [[ -n "$dl_releases" ]]; then
         python_environment_name="env"
         if [[ ! -d "$python_environment_name" ]]; then
@@ -479,13 +478,11 @@ configure_server () {
         pip install -qr $python_requirements
         # download the dependency releases into the server folder using the download_release.py script
         # it requires the requests package which we install here in a virtualenv
-        for srvc in "${!services[@]}"; do
-            echo "Downloading $srvc releases..."
-            releases=$(python download_release.py ${services[$srvc]})
-            if [[ -z "$releases" ]]; then
-                echo "[WARNING]: No Releases found for $srvc service"
-                continue
-            fi
+        echo "Downloading $branchname releases..."
+        releases=$(python download_release.py $branchname)
+        if [[ -z "$releases" ]]; then
+            echo "[WARNING]: No releases found."
+        else
             for release in $releases; do
                 echo "Extracting: $release"
                 if [[ "$release" == *yvideo-client* ]]; then
@@ -494,16 +491,16 @@ configure_server () {
                     ## So in this case we have to extract into another folder to keep
                     ## track of all the files in the archive.
                     ## These files are moved to the server_context in the extract_client function
-                    extract_client $release $server_context
+                    extract_client $release $server_context/static
                 else
                     ## All of the dependencies contain two folders: css and js which will be
                     ## copied into the server_context after they have all been extracted
                     tar xf $release
                 fi
             done
-            mv css/* $server_context/$srvc/css
-            mv js/* $server_context/$srvc/js
-        done
+            mv css/* $server_context/static/css
+            mv js/* $server_context/static/js
+        fi
         deactivate
     fi
 }
@@ -556,12 +553,10 @@ setup () {
         if [[ "$mode" == "dev" ]]; then
             compose_dev
         elif [[ "$mode" == "prod" ]]; then
-            branchname="master"
             YVIDEO_CONFIG="$YVIDEO_CONFIG_PROD"
             YLEX_CONFIG="$YLEX_CONFIG_PROD"
             compose_production $branchname $mode
         elif [[ "$mode" == "beta" ]]; then
-            branchname="develop"
             YVIDEO_CONFIG="$YVIDEO_CONFIG_BETA"
             YLEX_CONFIG="$YLEX_CONFIG_BETA"
             compose_production $branchname $mode

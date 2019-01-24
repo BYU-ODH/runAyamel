@@ -10,7 +10,7 @@ services:
         image: ylex_dev
         command: ["sbt", "run"]
         ports:
-        - "9000:9000"
+        - "9001:9000"
         volumes:
         - ${yvideo-dict-lookup}:/yvideo-dict-lookup
         stdin_open: true

@@ -413,6 +413,15 @@ cleanup () {
     git clean -xdff
 }
 
+extract_client() {
+    if [[ -f "$1" ]]; then
+        rm -rf yvideo-client
+        mkdir yvideo-client
+        tar xf $1 -C yvideo-client
+        mv yvideo-client $2/
+    fi
+}
+
 configure_server () {
     # The directory that contains the dockerfile we want to use
     server_context=$(if [[ "$mode" == "dev" ]]; then echo server/dev; else echo server; fi)
@@ -479,7 +488,18 @@ configure_server () {
             fi
             for release in $releases; do
                 echo "Extracting: $release"
-                tar xf $release
+                if [[ "$release" == *yvideo-client* ]]; then
+                    ## the yvideo-client repository has loose files, unlike the other dependencies
+                    ## which contain only two folders each: css and js.
+                    ## So in this case we have to extract into another folder to keep
+                    ## track of all the files in the archive.
+                    ## These files are moved to the server_context in the extract_client function
+                    extract_client $release $server_context
+                else
+                    ## All of the dependencies contain two folders: css and js which will be
+                    ## copied into the server_context after they have all been extracted
+                    tar xf $release
+                fi
             done
             mv css/* $server_context/$srvc/css
             mv js/* $server_context/$srvc/js

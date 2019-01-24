@@ -25,3 +25,4 @@ COPY $sites_available /usr/local/apache2/conf/extra/$sites_available
 
 ADD production /usr/local/apache2/htdocs/production
 ADD beta /usr/local/apache2/htdocs/beta
+ADD yvideo-client /usr/local/apache2/htdocs/yvideo-client

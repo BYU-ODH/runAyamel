@@ -419,7 +419,7 @@ cleanup () {
 
 extract_client() {
     if [[ -f "$1" ]]; then
-        rm -rf yvideo-client
+        rm -rf yvideo-client $2/yvideo-client
         mkdir yvideo-client
         tar xf $1 -C yvideo-client
         mv yvideo-client $2/

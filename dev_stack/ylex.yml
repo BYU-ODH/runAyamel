@@ -1,0 +1,20 @@
+version: '3.1'
+
+services:
+    ylex:
+        build:
+            context: ../dev/ylex
+            args:
+                sbt_version: 0.13.8
+            dockerfile: Dockerfile
+        image: ylex_dev
+        command: ["sbt", "run"]
+        ports:
+        - "9000:9000"
+        volumes:
+        - ${yvideo-dict-lookup}:/yvideo-dict-lookup
+        stdin_open: true
+
+volumes:
+    ylex:
+

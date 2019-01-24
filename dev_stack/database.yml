@@ -1,0 +1,18 @@
+version: '3.1'
+
+services:
+    database:
+        build: ../db
+        image: yvideodb
+        volumes:
+         - ${YVIDEO_SQL_DATA}:/var/lib/mysql
+        ports:
+         - "3306:3306"
+        environment:
+            MYSQL_USER: dev_user
+            MYSQL_PASSWORD: dev
+            MYSQL_ROOT_PASSWORD: test
+
+volumes:
+    database:
+

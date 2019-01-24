@@ -1,6 +1,7 @@
 FROM httpd:latest
 
 ARG sites_available
+RUN echo $sites_available
 # Enable mods and include virtual host configuration
 RUN sed -i \
         -e 's/^#\(LoadModule socache_shmcb_module modules\/mod_socache_shmcb.so\)/\1/' \

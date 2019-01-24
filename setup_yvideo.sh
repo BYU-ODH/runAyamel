@@ -415,7 +415,7 @@ cleanup () {
 
 configure_server () {
     # The directory that contains the dockerfile we want to use
-    server_context=$(if [[ "$mode" == "$test" ]]; then echo server/dev; else echo server; fi)
+    server_context=$(if [[ "$mode" == "dev" ]]; then echo server/dev; else echo server; fi)
 
     # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.
@@ -450,7 +450,7 @@ configure_server () {
     # old sites' frontends. This should be removed once we are exclusively using the yvideo-client front-end
     for srvc in "${!services[@]}"; do
         for repo in "${dependencies_remotes[@]}"; do
-            git clone -b "${services[$srvc]}" --depth 1 "$repo" server/"$srvc"/$(basename $repo) &> /dev/null
+            git clone -b "${services[$srvc]}" --depth 1 "$repo" $server_context/"$srvc"/$(basename $repo) &> /dev/null
         done
     done
 

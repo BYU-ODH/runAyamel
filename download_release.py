@@ -21,28 +21,40 @@ class Worker(threading.Thread):
         threading.Thread.__init__(self)
         self.repo = repo
 
+    def get_latest(self, releases):
+        version = ''
+        latest = None
+        for rel in releases:
+            if rel['prerelease'] == prerelease and len(rel['assets']) == 1 and rel['tag_name'] > version:
+                version = rel['tag_name']
+                latest = rel
+        return latest
+
+    def write_release(self, filename, stream):
+        with open(filename, 'wb') as f:
+            for chunk in stream.iter_content(chunk_size=1024):
+                if chunk: # filter out keep-alive new chunks
+                    f.write(chunk)
+
+    def request_file_stream(self, url):
+        download_request = requests.get(url, stream=True)
+        if download_request.status_code == 302:
+            download_request = requests.get(download_request.headers['Location'], stream=True)
+        return download_request
+
     def run(self):
         release_response = requests.get(api_base_url % self.repo)
         if release_response.status_code == 200:
             releases = release_response.json()
-            release = ''
-            for rel in releases:
-                if rel['prerelease'] == prerelease and len(rel['assets']) == 1:
-                    release = rel['assets'][0]['browser_download_url']
-                    filename = self.repo + '-' + rel['assets'][0]['name']
-                    if os.path.isfile(filename):
-                        print("%s release for %s already downloaded" % (filename, self.repo))
-                    else:
-                        download_request = requests.get(release, stream=True)
-                        if download_request.status_code == 302:
-                            print("Redirecting to %s" % download_request.headers['Location'])
-                            download_request = requests.get(download_request.headers['Location'], stream=True)
-                        with open(filename, 'wb') as f:
-                            for chunk in download_request.iter_content(chunk_size=1024):
-                                if chunk: # filter out keep-alive new chunks
-                                    f.write(chunk)
-                        print("Downloaded %s" % filename)
-                        break
+            latest = self.get_latest(releases)
+            if latest:
+                release_url = latest['assets'][0]['browser_download_url']
+                filename = self.repo + '-' + latest['assets'][0]['name']
+                if not os.path.isfile(filename):
+                    stream = self.request_file_stream(release_url)
+                    if stream.status_code == 200:
+                        self.write_release(filename, stream)
+                        print(filename)
 
 def download(prerelease):
     workers = []
@@ -58,4 +70,6 @@ if len(sys.argv) > 1:
     if branch != 'master':
         prerelease = True
 
-download(prerelease)
+if __name__ == "__main__":
+    download(prerelease)
+

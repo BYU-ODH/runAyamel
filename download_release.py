@@ -54,7 +54,7 @@ class Worker(threading.Thread):
                     stream = self.request_file_stream(release_url)
                     if stream.status_code == 200:
                         self.write_release(filename, stream)
-                        print(filename)
+                print(filename)
 
 def download(prerelease):
     workers = []

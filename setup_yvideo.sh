@@ -233,7 +233,7 @@ options () {
 get_services () {
     ## Gets the names of the files to use in the build and deploy steps
     ## as well as the services that need to be run
-    commands=$(python3 compose_files.py -s ${1:-"dsvx"} -p "$compose_file_dir/")
+    commands=$(python3 scripts/compose_files.py -s ${1:-"dsvx"} -p "$compose_file_dir/")
     ## prevent bash from parsing the echo output
     OLD_IFS=$IFS
     IFS=
@@ -469,12 +469,12 @@ configure_server () {
         fi
         . "$python_environment_name/bin/activate"
         # load requirements file
-        python_requirements="requirements.txt"
+        python_requirements="scripts/requirements.txt"
         pip install -qr $python_requirements
         # download the dependency releases into the server folder using the download_release.py script
         # it requires the requests package which we install here in a virtualenv
         echo "Downloading $branchname releases..."
-        releases=$(python download_release.py $branchname)
+        releases=$(python scripts/download_release.py $branchname)
         if [[ -z "$releases" ]]; then
             echo "[WARNING]: No releases found."
         else

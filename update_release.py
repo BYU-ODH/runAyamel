@@ -3,8 +3,6 @@
 import requests
 import sys
 import argparse
-import json
-import logging
 
 class UpdateRelease():
     def __init__(self, repo, list_url, edit_url):
@@ -59,6 +57,8 @@ if __name__ == '__main__':
     edit_url = edit_base % (args.repository, args.access_token)
     if UpdateRelease(args.repository, list_url, edit_url).upgrade_prerelease():
         print("Updated Release")
+        sys.exit(0)
     else:
         print("Failed to Update Release")
+        sys.exit(1)
 

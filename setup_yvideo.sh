@@ -369,12 +369,6 @@ compose_test () {
 
     # Copy in code from travis build dir
     cp -r $TRAVIS_BUILD_DIR test/$test_repo
-
-    if [[ "$BRANCH" != "master" ]]; then
-        # all branches of yvideo use the develop branch of the dependencies except for
-        # the master branch which uses the master branch of the dependencies
-        BRANCH="develop"
-    fi
 }
 
 # does a shallow clone with only 1 commit on the $1 branch for all repositories

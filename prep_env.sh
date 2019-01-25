@@ -16,7 +16,7 @@ clone_repos () {
         else
             prefix="git@github.com:"
         fi
-        for reponame in yvideo yvideo-dict-lookup yvideojs subtitle-timeline-editor TimedText EditorWidgets; do
+        for reponame in yvideo yvideo-client yvideo-dict-lookup yvideojs subtitle-timeline-editor TimedText EditorWidgets; do
             remote="$prefix""BYU-ODH/""$reponame"
             cd $(dirname $scriptpath)
             if [[ -d "$reponame" ]]; then

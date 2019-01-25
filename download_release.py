@@ -7,7 +7,7 @@ import os.path
 
 base_url = 'https://github.com/BYU-ODH/'
 api_base_url = 'https://api.github.com/repos/BYU-ODH/%s/releases'
-prerelease = False
+production = True
 repos = [
     'yvideojs',
     'EditorWidgets',
@@ -25,7 +25,11 @@ class Worker(threading.Thread):
         version = ''
         latest = None
         for rel in releases:
-            if rel['prerelease'] == prerelease and len(rel['assets']) == 1 and rel['tag_name'] > version:
+            # in production mode, prerelease must be false.
+            # in staging, it doesn't matter what prerelease is, we just
+            # want the latest release/prerelease
+            suitable_for_our_needs = ((production and rel['prerelease'] is False) or not production)
+            if suitable_for_our_needs and len(rel['assets']) == 1 and rel['tag_name'] > version:
                 version = rel['tag_name']
                 latest = rel
         return latest
@@ -56,7 +60,7 @@ class Worker(threading.Thread):
                         self.write_release(filename, stream)
                 print(filename)
 
-def download(prerelease):
+def download():
     workers = []
     for x in range(0, len(repos)):
         workers.append(Worker(repos[x]))
@@ -68,8 +72,8 @@ def download(prerelease):
 if len(sys.argv) > 1:
     branch = sys.argv[1]
     if branch != 'master':
-        prerelease = True
+        production = True
 
 if __name__ == "__main__":
-    download(prerelease)
+    download(production)
 

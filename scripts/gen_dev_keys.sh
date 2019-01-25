@@ -54,7 +54,7 @@ rm -f *.key *.crt
 for x in $services; do
     gen_key_cert $x
     docker secret create "$x""_key" $x.key
-    docker secret create "$x""_cert" $x.crt 
+    docker secret create "$x""_cert" $x.crt
 done
 
 rm config.txt *.key *.crt

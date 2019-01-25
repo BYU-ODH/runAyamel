@@ -31,14 +31,13 @@ exit_code=0
 container=""
 
 declare -A repos # Associative array! :) used in the compose_dev function
-repos=([yvideo]="" [yvideojs]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="" [yvideo-dict-lookup]="")
+repos=([yvideo]="" [yvideojs]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="" [yvideo-dict-lookup]="" [yvideo-client]="")
 yvideo_remote=(https://github.com/byu-odh/yvideo)
 ylex_remote=(https://github.com/byu-odh/yvideo-dict-lookup)
 dependencies_remotes=(https://github.com/byu-odh/yvideojs
         https://github.com/byu-odh/EditorWidgets
         https://github.com/byu-odh/subtitle-timeline-editor
         https://github.com/byu-odh/TimedText)
-remotes=("${yvideo_remote[@]}" "${dependencies_remotes[@]}" "${ylex_remote[@]}")
 
 usage () {
     echo 'Optional Params:'
@@ -339,11 +338,13 @@ compose_dev () {
         repos["$repo"]="$user_dir"
     done
 
+    ## export directories which will be used in the build and deploy steps by docker-compose and docker stack deploy
     export yvideo="${repos[yvideo]}"
     export yvideojs="${repos[yvideojs]}"
     export subtitle_timeline_editor="${repos[subtitle-timeline-editor]}"
     export EditorWidgets="${repos[EditorWidgets]}"
     export TimedText="${repos[TimedText]}"
+    export yvideo_client="${repos[yvideo-client]}"
     export yvideo_dict_lookup="${repos[yvideo-dict-lookup]}"
 }
 
@@ -403,7 +404,7 @@ compose_production () {
     # copy the application.conf file into the context of the dockerfile for ylex
     if [[ -f "$YLEX_CONFIG" ]]; then
         # clone the ylex branch into the ylex folder
-        git clone -b "$1" --depth 1 "$ylex_remote" "$2"/ylex/yvideo-dict-lookup &> /dev/null
+        git clone -b "$1" --depth 1 "$ylex_remote" "$2"/ylex/$(basename $ylex_remote) &> /dev/null
         # copy the application.conf file into the ylex dockerfile folder
         cp "$YLEX_CONFIG" "$2"/ylex/application.conf
     else

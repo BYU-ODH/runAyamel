@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-services="yvideodev ylexdev yvideo ylex yvideobeta ylexbeta server"
+services="server"
 
 rm_secrets () {
     for x in $services; do

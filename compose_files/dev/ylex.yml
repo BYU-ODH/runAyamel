@@ -3,7 +3,7 @@ version: '3.1'
 services:
     ylex:
         build:
-            context: ../dev/ylex
+            context: ../../docker_contexts/dev/ylex
             args:
                 sbt_version: 0.13.8
             dockerfile: Dockerfile
@@ -12,7 +12,7 @@ services:
         ports:
         - "9001:9000"
         volumes:
-        - ${yvideo-dict-lookup}:/yvideo-dict-lookup
+        - ${yvideo_dict_lookup}:/yvideo-dict-lookup
         stdin_open: true
 
 volumes:

@@ -3,27 +3,22 @@
 default=""
 attach=""
 remove=""
-full_remove=""
 build=""
-recreate="--no-recreate"
 cache=""
 update=""
 force=""
 dl_releases="true"
-no_deps=""
 clean=""
 setup_only=""
 super_duper_clean=""
-travis=""
-test_local=""
 project_name="yvideo"
 git_dir=${GITDIR:-~/Documents/GitHub}
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
 services=""
-dev_compose_dir="dev_stack"
-production_compose_dir="production_stack"
+dev_compose_dir="compose_files/dev"
+production_compose_dir="compose_files/prod"
 beta_compose_dir="$production_compose_dir"
-test_compose_dir="travis"
+test_compose_dir="compose_files/travis"
 compose_file_dir=""
 mode=""
 branchname=""
@@ -32,12 +27,12 @@ container=""
 
 declare -A repos # Associative array! :) used in the compose_dev function
 repos=([yvideo]="" [yvideojs]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="" [yvideo-dict-lookup]="" [yvideo-client]="")
-yvideo_remote=(https://github.com/byu-odh/yvideo)
-ylex_remote=(https://github.com/byu-odh/yvideo-dict-lookup)
-dependencies_remotes=(https://github.com/byu-odh/yvideojs
-        https://github.com/byu-odh/EditorWidgets
-        https://github.com/byu-odh/subtitle-timeline-editor
-        https://github.com/byu-odh/TimedText)
+yvideo_remote=(https://github.com/BYU-ODH/yvideo)
+ylex_remote=(https://github.com/BYU-ODH/yvideo-dict-lookup)
+dependencies_remotes=(https://github.com/BYU-ODH/yvideojs
+        https://github.com/BYU-ODH/EditorWidgets
+        https://github.com/BYU-ODH/subtitle-timeline-editor
+        https://github.com/BYU-ODH/TimedText)
 
 usage () {
     echo 'Optional Params:'
@@ -49,7 +44,7 @@ usage () {
     echo '          [--help             | -h]    Show this dialog'
     echo '          [--attach           | -a]    Attach to the yvideo container after starting it'
     echo '                                       The containers will be run in the background unless attach is specified'
-    echo "          [--remove           | -r]    Removes all of the containers that start with the project prefix: $project_name"
+    echo '          [--remove           | -r]    Removes all of the containers that start with the project prefix: $mode'
     echo '                                       Containers are removed before anything else is done.'
     echo '          [ -frd |-frb |-frp |-frt]    Removes everything in the docker-compose project using docker-compose down.'
     echo '          [--clean            | -c]    Remove all of the created files in the yvideo-deploy directory.'
@@ -134,14 +129,12 @@ options () {
         elif [[ "$opt" == "--travis" ]];
         then
             compose_file_dir="$test_compose_dir"
-            travis=true
-            mode="test"
+            mode="travis"
 
         elif [[ "$opt" == "--test" ]] || [[ "$opt" == "-t" ]];
         then
             compose_file_dir="$dev_compose_dir"
             compose_override_file="$dev_compose_file"
-            test_local=true
             mode="dev"
 
         elif [[ "$opt" == "--build" ]];
@@ -175,26 +168,6 @@ options () {
         elif [[ "$opt" == "--update" ]] || [[ "$opt" == "-u" ]];
         then
             update="true"
-
-        elif [[ "$opt" == "-frd" ]];
-        then
-            full_remove=true
-            compose_override_file="$dev_compose_file"
-
-        elif [[ "$opt" == "-frb" ]];
-        then
-            full_remove=true
-            compose_override_file="$beta_compose_file"
-
-        elif [[ "$opt" == "-frp" ]];
-        then
-            full_remove=true
-            compose_override_file="$production_compose_file"
-
-        elif [[ "$opt" == "-frt" ]];
-        then
-            full_remove=true
-            compose_override_file="$test_compose_file"
 
         elif [[ "$opt" == "--clean" ]] || [[ "$opt" == "-c" ]];
         then
@@ -341,11 +314,13 @@ compose_dev () {
     ## export directories which will be used in the build and deploy steps by docker-compose and docker stack deploy
     export yvideo="${repos[yvideo]}"
     export yvideojs="${repos[yvideojs]}"
-    export subtitle_timeline_editor="${repos[subtitle-timeline-editor]}"
+    export subtitle_timeline_editor="${repos[subtitle_timeline_editor]}"
     export EditorWidgets="${repos[EditorWidgets]}"
     export TimedText="${repos[TimedText]}"
-    export yvideo_client="${repos[yvideo-client]}"
-    export yvideo_dict_lookup="${repos[yvideo-dict-lookup]}"
+    export yvideo_client="${repos[yvideo_client]}"
+    export yvideo_dict_lookup="${repos[yvideo_dict_lookup]}"
+    echo ${repos[@]}
+    exit
 }
 
 # used when --travis is specified
@@ -423,7 +398,7 @@ extract_client() {
 
 configure_server () {
     # The directory that contains the dockerfile we want to use
-    server_context=$(if [[ "$mode" == "dev" ]]; then echo server/dev; else echo server; fi)
+    server_context=$(if [[ "$mode" == "dev" ]]; then echo docker_contexts/server/dev; else echo docker_contexts/server; fi)
 
     # The sites-available should be a folder that contains the apache conf for the sites that will
     # be running on this server.
@@ -434,7 +409,7 @@ configure_server () {
     if [[ -d "$YVIDEO_SITES_AVAILABLE" ]] && [[ $(ls -1 $YVIDEO_SITES_AVAILABLE | wc -l) -ne 0 ]]; then
         export SITES_FOLDER_NAME=${YVIDEO_SITES_AVAILABLE##*/}
         cp -r $YVIDEO_SITES_AVAILABLE $server_context/
-    elif [[ "$mode" != "test" ]]; then
+    elif [[ "$mode" != "travis" ]]; then
         echo "[WARNING] - No httpd site config loaded. Make sure that the"
         echo "            YVIDEO_SITES_AVAILABLE environment variable contains the path"
         echo "            to a directory that contains the virtual host configurations for"
@@ -469,7 +444,7 @@ configure_server () {
         fi
         . "$python_environment_name/bin/activate"
         # load requirements file
-        python_requirements="scripts/requirements.txt"
+        python_requirements="requirements.txt"
         pip install -qr $python_requirements
         # download the dependency releases into the server folder using the download_release.py script
         # it requires the requests package which we install here in a virtualenv
@@ -504,7 +479,7 @@ configure_database () {
     # Check if data volume env var is defined and the path exists if we need it
     if [[ ! -d "$YVIDEO_SQL_DATA" ]]; then
         # We don't use database volumes for testing on travis
-        if [[ "$mode" != "test" ]]; then
+        if [[ "$mode" != "travis" ]]; then
             echo "[${YVIDEO_SQL_DATA:-Environment Variable YVIDEO_SQL_DATA}] does not exist."
             echo "The environment variable YVIDEO_SQL_DATA needs to be exported to this script."
             echo "And it needs to contain the path to a directory."
@@ -521,13 +496,13 @@ configure_database () {
     [[ $? -ne 0 ]] && echo "[WARNING] - MYSQL PASSWORD SECRET NOT SET"
 
     # Special case for when running from within travis
-    if [[ "$mode" == "test" ]]; then
+    if [[ "$mode" == "travis" ]]; then
         # copy the travis sql files from the test folder
-        cp test/*.sql db/
+        cp test/*.sql docker_contexts/database
     elif [[ -d "$YVIDEO_SQL" ]]; then
         # YVIDEO_SQL is a folder that contains the sql files to load into the database
         # copy it into the database dockerfile folder
-        cp "$YVIDEO_SQL/"*.sql db/
+        cp "$YVIDEO_SQL/"*.sql docker_contexts/database
     else
         echo "[$YVIDEO_SQL] does not exist."
         echo "No new databases will be created."
@@ -555,7 +530,7 @@ setup () {
             YVIDEO_CONFIG="$YVIDEO_CONFIG_BETA"
             YLEX_CONFIG="$YLEX_CONFIG_BETA"
             compose_production $branchname $mode
-        elif [[ "$mode" == "test" ]]; then
+        elif [[ "$mode" == "travis" ]]; then
             [[ "$services" != *database* ]] && configure_database $compose_file_dir
             compose_test
         fi
@@ -601,7 +576,7 @@ options "$@"
 [[ -n "$clean" ]] && cleanup
 [[ -n "$compose_file_dir" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
 
-if [[ -n "$compose_file_dir" ]] && [[ "$mode" == "test" ]]; then
+if [[ -n "$compose_file_dir" ]] && [[ "$mode" == "travis" ]]; then
     run_travis_tests
 elif [[ -n "$compose_file_dir" ]]; then
     start_services

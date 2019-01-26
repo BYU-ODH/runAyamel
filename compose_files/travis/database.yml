@@ -2,7 +2,7 @@ version: '3.1'
 
 services:
     database:
-        build: ../db
+        build: ../../docker_contexts/database
         image: yvideodb
         environment:
             MYSQL_ROOT_PASSWORD: root

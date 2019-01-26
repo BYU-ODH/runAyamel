@@ -12,3 +12,4 @@ RUN sed -i \
         conf/httpd.conf
 
 COPY $sites_available /usr/local/apache2/conf/extra/$sites_available
+RUN rm htdocs/index.html

@@ -3,7 +3,7 @@ version: '3.1'
 services:
     yvideo:
         build:
-            context: ../dev/yvideo
+            context: ../../docker_contexts/dev/yvideo
             args:
                 sbt_version: 0.13.8
             dockerfile: Dockerfile

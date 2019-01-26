@@ -13,8 +13,7 @@ ylex.dev.yml
 *.crt
 *.key
 *.conf
-server/beta**
-server/production**
 env
 *.tar
 .DS_Store
+static

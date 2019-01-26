@@ -359,9 +359,9 @@ compose_production () {
     # https://docs.docker.com/engine/reference/builder/#copy
     if [[ -f "$YVIDEO_CONFIG" ]]; then
         # clone the yvideo master branch into the production folder
-        git clone -b "$1" --depth 1 "$yvideo_remote" "$2"/yvideo/$(basename $yvideo_remote) &> /dev/null
+        git clone -b "$1" --depth 1 "$yvideo_remote" docker_contexts/"$2"/yvideo/$(basename $yvideo_remote) &> /dev/null
         # copy it into the production dockerfile folder
-        cp "$YVIDEO_CONFIG" "$2"/yvideo/application.conf
+        cp "$YVIDEO_CONFIG" docker_contexts/"$2"/yvideo/application.conf
     else
         echo "[$YVIDEO_CONFIG] does not exist."
         echo "The environment variable YVIDEO_CONFIG_[BETA|PROD] needs to be exported to this script in order to run yvideo in production mode."
@@ -371,9 +371,9 @@ compose_production () {
     # copy the application.conf file into the context of the dockerfile for ylex
     if [[ -f "$YLEX_CONFIG" ]]; then
         # clone the ylex branch into the ylex folder
-        git clone -b "$1" --depth 1 "$ylex_remote" "$2"/ylex/$(basename $ylex_remote) &> /dev/null
+        git clone -b "$1" --depth 1 "$ylex_remote" docker_contexts/"$2"/ylex/$(basename $ylex_remote) &> /dev/null
         # copy the application.conf file into the ylex dockerfile folder
-        cp "$YLEX_CONFIG" "$2"/ylex/application.conf
+        cp "$YLEX_CONFIG" docker_contexts/"$2"/ylex/application.conf
     else
         echo "[$YLEX_CONFIG] does not exist."
         echo "The environment variable YLEX_CONFIG_[BETA|PROD] needs to be exported to this script in order to run yvideo in production mode."

@@ -314,13 +314,11 @@ compose_dev () {
     ## export directories which will be used in the build and deploy steps by docker-compose and docker stack deploy
     export yvideo="${repos[yvideo]}"
     export yvideojs="${repos[yvideojs]}"
-    export subtitle_timeline_editor="${repos[subtitle_timeline_editor]}"
+    export subtitle_timeline_editor="${repos['subtitle-timeline-editor']}"
     export EditorWidgets="${repos[EditorWidgets]}"
     export TimedText="${repos[TimedText]}"
-    export yvideo_client="${repos[yvideo_client]}"
-    export yvideo_dict_lookup="${repos[yvideo_dict_lookup]}"
-    echo ${repos[@]}
-    exit
+    export yvideo_client="${repos['yvideo-client']}"
+    export yvideo_dict_lookup="${repos['yvideo-dict-lookup']}"
 }
 
 # used when --travis is specified

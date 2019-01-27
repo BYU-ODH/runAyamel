@@ -5,13 +5,8 @@ services:
         depends_on:
             - database
         build:
-            context: ../../docker_contexts/$mode/ylex
-            args:
-                sbt_version: 0.13.8
+            context: ../../docker_contexts/travis/ylex
             dockerfile: Dockerfile
         image: ylex_travis
-        command: bash -c "sbt -no-colors test -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$MYSQL_PASSWORD -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
-        environment:
-            MYSQL_USER: travis
-            MYSQL_PASSWORD: test
+        command: ["sbt", "-no-colors", "test"]
 

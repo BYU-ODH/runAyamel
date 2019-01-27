@@ -6,12 +6,7 @@ services:
             - database
         build:
             context: ../../docker_contexts/travis/yvideo
-            args:
-                sbt_version: 0.13.8
             dockerfile: Dockerfile
         image: yvideo_travis
-        command: bash -c "sbt -no-colors test -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$MYSQL_PASSWORD -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
-        environment:
-            MYSQL_USER: travis
-            MYSQL_PASSWORD: test
+        command: ["sbt", "-no-colors", "test"]
 

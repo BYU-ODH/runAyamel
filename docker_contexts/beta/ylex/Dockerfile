@@ -1,17 +1,8 @@
-FROM openjdk:8-alpine
+FROM verdude/yvideo-base
 
-RUN apk update && apk add bash
-
-# Copy code into image
-COPY yvideo-dict-lookup /yvideo-dict-lookup/
-
-# Copy in the application.conf file
-COPY application.conf /yvideo-dict-lookup/conf/
-
-ARG sbt_version
-RUN wget -q "https://dl.bintray.com/sbt/native-packages/sbt/$sbt_version/sbt-$sbt_version.zip"
-RUN unzip -q sbt-$sbt_version.zip
-RUN ln -s /sbt/bin/sbt /usr/local/bin/sbt
+RUN mv /yvideo /yvideo-dict-lookup
+COPY yvideo-dict-lookup /yvideo-dict-lookup
+COPY application.conf /yvideo-dict-lookup/conf/application.conf
 
 WORKDIR /yvideo-dict-lookup
 

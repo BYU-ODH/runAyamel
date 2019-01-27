@@ -341,7 +341,8 @@ compose_test () {
     build=true
 
     # Copy in code from travis build dir
-    cp -r $TRAVIS_BUILD_DIR test/$test_repo
+    cp -r $TRAVIS_BUILD_DIR docker_contexts/travis/$test_repo
+    touch docker_contexts/travis/yvideo_test.sql
 }
 
 # does a shallow clone with only 1 commit on the $1 branch for all repositories
@@ -496,7 +497,7 @@ configure_database () {
     # Special case for when running from within travis
     if [[ "$mode" == "travis" ]]; then
         # copy the travis sql files from the test folder
-        cp test/*.sql docker_contexts/database
+        cp docker_contexts/travis/*.sql docker_contexts/database
     elif [[ -d "$YVIDEO_SQL" ]]; then
         # YVIDEO_SQL is a folder that contains the sql files to load into the database
         # copy it into the database dockerfile folder

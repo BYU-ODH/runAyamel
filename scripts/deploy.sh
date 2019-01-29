@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -ex
+set -e
 
 yvideo_deploy_initialize() {
     cd $(dirname $1)
@@ -22,16 +22,17 @@ yvideo_deploy_restart_services() {
     set +e
     bash setup_yvideo.sh $YVIDEO_VERSION --remove --services=v
     if [[ $? -ne 0 ]]; then
-        printf "$(date)::yvideo_deploy.sh::ERROR::Failed to stop service yvideo\n" >> deploy.log
-        exit 1
+        printf "$(date)::yvideo_deploy.sh::WARNING::Failed to stop service yvideo\n" >> deploy.log
     fi
     sleep 30
-    bash setup_yvideo.sh $YVIDEO_VERSION --services=v --build --nc
-    if [[ $? -ne 0 ]]; then
-        printf "$(date)::yvideo_deploy.sh::ERROR::Failed to stop service yvideo\n" >> deploy.log
-        exit 1
-    fi
+    bash setup_yvideo.sh $YVIDEO_VERSION --build --nc
     set -e
+    if [[ $? -ne 0 ]]; then
+        printf "$(date)::yvideo_deploy.sh::ERROR::Failed to deploy yvideo\n" >> deploy.log
+        exit 1
+    else
+        printf "$(date)::yvideo_deploy.sh::SUCCESS::yvideo successfully deployed\n" >> deploy.log
+    fi
 }
 
 yvideo_deploy() {

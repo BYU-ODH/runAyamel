@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3.2'
 
 services:
     ylex:
@@ -10,7 +10,9 @@ services:
         image: ylex_dev
         command: ["sbt", "run"]
         ports:
-        - "9001:9000"
+        - target: 9000
+          published: 9001
+          mode: host
         volumes:
         - ${yvideo_dict_lookup}:/yvideo-dict-lookup
         stdin_open: true

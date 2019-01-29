@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3.2'
 
 services:
     database:
@@ -7,7 +7,9 @@ services:
         volumes:
          - ${YVIDEO_SQL_DATA}:/var/lib/mysql
         ports:
-         - "3306:3306"
+        - target: 3306
+          published: 3306
+          mode: host
         environment:
             MYSQL_USER: dev_user
             MYSQL_PASSWORD: dev

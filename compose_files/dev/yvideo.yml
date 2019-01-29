@@ -1,19 +1,18 @@
-version: '3.1'
+version: '3.2'
 
 services:
     yvideo:
         build:
             context: ../../docker_contexts/dev/yvideo
-            args:
-                sbt_version: 0.13.8
-            dockerfile: Dockerfile
         image: yvideo_dev
-        ports:
-        - "9000:9000"
-        volumes:
-        - ${yvideo}:/yvideo
         command: ["sbt", "run"]
         stdin_open: true
+        volumes:
+        - ${yvideo}:/yvideo
+        ports:
+        - target: 9000
+          published: 9000
+          mode: host
 
 volumes:
     yvideo:

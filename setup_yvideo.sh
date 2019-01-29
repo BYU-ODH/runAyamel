@@ -443,12 +443,14 @@ configure_server () {
         fi
         . "$python_environment_name/bin/activate"
         # load requirements file
-        python_requirements="requirements.txt"
+        python_requirements="scripts/requirements.txt"
         pip install -qr $python_requirements
         # download the dependency releases into the server folder using the download_release.py script
         # it requires the requests package which we install here in a virtualenv
         echo "Downloading $branchname releases..."
-        releases=$(python scripts/download_release.py $branchname)
+        token=$([[ -n $YVIDEO_GITHUB_ACCESS_TOKEN ]] && echo "--access_token $YVIDEO_GITHUB_ACCESS_TOKEN")
+        is_prod=$([[ "$branchname" == "master" ]] && echo "--production")
+        releases=$(python scripts/download_release.py $is_prod $token)
         if [[ -z "$releases" ]]; then
             echo "[WARNING]: No releases found."
         else

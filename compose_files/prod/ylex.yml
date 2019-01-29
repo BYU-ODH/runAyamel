@@ -7,7 +7,7 @@ services:
             args:
                 sbt_version: 0.13.8
             dockerfile: Dockerfile
-        image: ylex
+        image: ylex_$mode
         command: bash -c "sbt clean stage && target/universal/stage/bin/dictionary -Dhttp.port=9000 -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$(cat $$MYSQL_PASSWORD_FILE) -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"
         secrets:
          - mysql_password

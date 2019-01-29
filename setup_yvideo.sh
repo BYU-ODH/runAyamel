@@ -559,6 +559,7 @@ run_docker_compose () {
 }
 
 start_services () {
+    export mode=$mode
     docker stack deploy $deploy_flags $mode
     exit_code=$?
     [[ -n "$attach" ]] && [[ -n "$container" ]] && docker attach --sig-proxy=false "$container"

@@ -26,8 +26,9 @@ yvideo_deploy_restart_services() {
     fi
     sleep 30
     bash setup_yvideo.sh $YVIDEO_VERSION --build --nc
+    ecode=$?
     set -e
-    if [[ $? -ne 0 ]]; then
+    if [[ $ecode -ne 0 ]]; then
         printf "$(date)::yvideo_deploy.sh::ERROR::Failed to deploy yvideo\n" >> deploy.log
         exit 1
     else

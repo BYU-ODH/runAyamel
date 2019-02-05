@@ -20,11 +20,13 @@ yvideo_deploy_initialize() {
 
 yvideo_deploy_restart_services() {
     set +e
-    bash setup_yvideo.sh $YVIDEO_VERSION --remove --services=v
+    # remove the entire stack
+    bash setup_yvideo.sh $YVIDEO_VERSION --remove
     if [[ $? -ne 0 ]]; then
         printf "$(date)::yvideo_deploy.sh::WARNING::Failed to stop service yvideo\n" >> deploy.log
     fi
     sleep 30
+    # restart the entire stack
     bash setup_yvideo.sh $YVIDEO_VERSION --build --nc
     ecode=$?
     set -e

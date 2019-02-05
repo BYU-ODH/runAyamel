@@ -4,8 +4,6 @@ services:
     yvideo:
         build:
             context: ../../docker_contexts/$mode/yvideo
-            args:
-                sbt_version: 0.13.8
             dockerfile: Dockerfile
         image: yvideo_$mode
         command: bash -c "sbt clean stage && target/universal/stage/bin/yvideo -Dhttp.port=9000 -Ddb.default.username=$$MYSQL_USER -Ddb.default.password=$$(cat $$MYSQL_PASSWORD_FILE) -Dplay.evolutions.db.default.autoApply=true -DapplyEvolutions.default=true"

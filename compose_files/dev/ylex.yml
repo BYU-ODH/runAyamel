@@ -4,8 +4,6 @@ services:
     ylex:
         build:
             context: ../../docker_contexts/dev/ylex
-            args:
-                sbt_version: 0.13.8
             dockerfile: Dockerfile
         image: ylex_dev
         command: ["sbt", "run"]

@@ -2,7 +2,7 @@ This repository ties the yVideo project together.
 
 Run the prep_env.sh script in order to download all of the needed repositories and to install docker and docker-compose. Currently, only Ubuntu and Fedora are supported when it comes to installing docker/docker-compose.
 
-    usage:$ bash prep_env.sh <branch>
+    usage:$ bash scripts/prep_env.sh <branch>
 
 If the branch argument is present, the code repositories will be downloaded. The repositories will not be be downloaded otherwise. The branch argument should match master|develop which are the branch names that exist for every yVideo repository.
 

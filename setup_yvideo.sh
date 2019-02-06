@@ -520,10 +520,13 @@ setup () {
     ## save the service names into $service among other things
     get_services $service_list
 
+    ## compose_dev exports environment variables necessary for the server, ylex and yvideo services.
+    if [[ "$mode" == "dev" ]] && [[ "$services" =~ server|ylex|yvideo ]]; then
+        compose_dev
+    fi
+
     if [[ "$services" == *yvideo* ]] || [[ "$services" == *ylex* ]]; then
-        if [[ "$mode" == "dev" ]]; then
-            compose_dev
-        elif [[ "$mode" == "prod" ]]; then
+        if [[ "$mode" == "prod" ]]; then
             YVIDEO_CONFIG="$YVIDEO_CONFIG_PROD"
             YLEX_CONFIG="$YLEX_CONFIG_PROD"
             compose_production $branchname $mode

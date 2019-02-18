@@ -1,7 +1,7 @@
 #/bin/bash
 
 scriptpath="$(cd "$(dirname "$0")"; pwd -P)"
-repos_folder=$(dirname "$scriptpath")
+repos_folder=${GITDIR:-$(dirname "$scriptpath")/..}
 distro="$(lsb_release -si 2>/dev/null)"
 docker_location="$(which docker 2>/dev/null)"
 dcompose_location="$(which docker-compose 2>/dev/null)"
@@ -16,17 +16,18 @@ clone_repos () {
         else
             prefix="git@github.com:"
         fi
+        echo "Cloning repos into $repos_folder"
         for reponame in yvideo yvideo-client yvideo-dict-lookup yvideojs subtitle-timeline-editor TimedText EditorWidgets; do
             remote="$prefix""BYU-ODH/""$reponame"
-            cd $(dirname $scriptpath)
+            cd $repos_folder
             if [[ -d "$reponame" ]]; then
                 echo "$reponame has already been cloned."
             else
-                git clone "$remote"
+                git clone "$remote" &>/dev/null
             fi
             cd "$reponame"
             if [[ -n $(git ls-remote --heads "$remote" "$branch") ]]; then
-                git checkout "$branch"
+                git checkout "$branch" &>/dev/null
             else
                 echo "Branch $branch does not exist for repository: $reponame"
             fi

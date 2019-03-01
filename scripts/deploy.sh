@@ -27,7 +27,7 @@ yvideo_deploy_restart_services() {
     fi
     sleep 30
     # restart the entire stack
-    bash setup_yvideo.sh $YVIDEO_VERSION --build --nc
+    bash setup_yvideo.sh $YVIDEO_VERSION --build --nc --clean
     ecode=$?
     set -e
     if [[ $ecode -ne 0 ]]; then

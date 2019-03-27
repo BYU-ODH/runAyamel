@@ -24,6 +24,7 @@ mode=""
 branchname=""
 exit_code=0
 container=""
+test_object_name=""
 
 declare -A repos # Associative array! :) used in the compose_dev function
 repos=([yvideo]="" [yvideojs]="" [EditorWidgets]="" [subtitle-timeline-editor]="" [TimedText]="" [yvideo-dict-lookup]="" [yvideo-client]="")
@@ -66,6 +67,7 @@ usage () {
     echo '                                       s -> server'
     echo '                                       v -> video'
     echo '                                       x -> ylex'
+    echo "          [--tf                   ]    Specify a test object name. Only this object's tests will run"
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
@@ -185,6 +187,10 @@ options () {
         elif [[ "$opt" == "--nr" ]];
         then
             dl_releases=""
+
+        elif [[ "$opt" =~ ^\-\-tf=.*$ ]];
+            then
+                test_object_name=${opt##*=}
 
         else
             echo "Argument: [$opt] not recognized."
@@ -567,7 +573,14 @@ run_tests_locally () {
         done
         IFS=$OLD_IFS
         if [[ "$yvideo_container_id" != "" ]]; then
-            docker exec $yvideo_container_id sbt test
+            if [[ -n "$test_object_name" ]]; then
+                test_command="testOnly $test_object_name"
+            else
+                test_command="test"
+            fi
+            echo "$test_command"
+            # test command needs to be escaped, otherwise, sbt won't get the test_object_name if it is passed in
+            docker exec $yvideo_container_id sbt "$test_command"
             exit $?
         else
             echo "Running yvideo container not found."

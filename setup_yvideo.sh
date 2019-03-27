@@ -37,7 +37,7 @@ dependencies_remotes=(https://github.com/BYU-ODH/yvideojs
 usage () {
     echo 'Optional Params:'
     echo
-    echo '          [--default          | -e]    Accept the default repository locations '
+    echo '          [--default          | -e]    Accept the default repository locations'
     echo "                                       Used for: ${!repos[@]}"
     echo '                                       (default is $GITDIR or ~/Documents/GitHub for everything)'
     echo '                                       Only used with --test and --dev'
@@ -133,9 +133,7 @@ options () {
 
         elif [[ "$opt" == "--test" ]] || [[ "$opt" == "-t" ]];
         then
-            compose_file_dir="$dev_compose_dir"
-            compose_override_file="$dev_compose_file"
-            mode="dev"
+            mode="test"
 
         elif [[ "$opt" == "--build" ]];
         then
@@ -489,7 +487,10 @@ configure_database () {
     fi
 
     # check if the docker secrets exist
-    # only issues a warning because it is hard to say when we will or won't be running the mysql service
+    # only issues a warning
+    # TODO stop the build if at least one of these is not set
+    # We can't know which one of these they plan to use. However it is necessary to set one in order
+    # to connect to the mysql service
     docker secret inspect mysql_root_password &>/dev/null
     [[ $? -ne 0 ]] && echo "[WARNING] - MYSQL ROOT PASSWORD SECRET NOT SET"
 
@@ -549,6 +550,32 @@ setup () {
     fi
 }
 
+run_tests_locally () {
+    if [[ "$mode" == "test" ]]; then
+        service_containers=$(docker service ps -q dev_yvideo -f "desired-state=running" 2>/dev/null)
+        if [[ $? -ne 0 ]]; then
+            echo "Please Start the dev stack before attempting to run tests locally:"
+            echo -e "\t$0 -d -s=dv"
+            exit 1
+        fi
+        OLD_IFS=$IFS
+        IFS=
+        for container in $service_containers; do
+            yvideo_container_id=$(docker inspect --format '{{.Status.ContainerStatus.ContainerID}}' $container)
+            [[ $? -eq 0 ]] && break
+            yvideo_container_id=""
+        done
+        IFS=$OLD_IFS
+        if [[ "$yvideo_container_id" != "" ]]; then
+            docker exec $yvideo_container_id sbt test
+            exit $?
+        else
+            echo "Running yvideo container not found."
+            exit 1
+        fi
+    fi
+}
+
 run_docker_compose () {
     if [[ -n $build ]]; then
         export mode=$mode
@@ -580,6 +607,7 @@ options "$@"
 [[ -n "$remove" ]] && remove_services && exit
 [[ -n "$clean" ]] && cleanup
 [[ -n "$compose_file_dir" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
+[[ "$mode" == "test" ]] && run_tests_locally
 
 if [[ -n "$compose_file_dir" ]] && [[ "$mode" == "travis" ]]; then
     run_travis_tests
@@ -589,5 +617,6 @@ fi
 
 [[ -n "$super_duper_clean" ]] && cleanup
 # use the docker command exit code rather than whatever the last line may output
+# Travis uses this as a way to detect whether the build failed
 exit $exit_code
 

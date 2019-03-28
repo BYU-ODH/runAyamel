@@ -9,6 +9,7 @@ if [[ -z "$rootpassword" ]]; then
         rootpassword="$(cat /run/secrets/mysql_root_password)"
     elif [[ -n "$MYSQL_ROOT_PASSWORD" ]]; then
         rootpassword="$MYSQL_ROOT_PASSWORD"
+        echo "mysql root password has been set"
     else
         echo "mysql root password not set"
         exit 1
@@ -21,6 +22,7 @@ if [[ -z "$userpassword" ]]; then
         userpassword="$(cat /run/secrets/mysql_password)"
     elif [[ -n "$MYSQL_PASSWORD" ]]; then
         userpassword="$MYSQL_PASSWORD"
+        echo "mysql user password has been set"
     else
         echo "mysql password not set"
         exit 1

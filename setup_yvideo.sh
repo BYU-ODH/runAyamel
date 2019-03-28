@@ -578,7 +578,6 @@ run_tests_locally () {
             else
                 test_command="test"
             fi
-            echo "$test_command"
             # test command needs to be escaped, otherwise, sbt won't get the test_object_name if it is passed in
             docker exec $yvideo_container_id sbt "$test_command"
             exit $?

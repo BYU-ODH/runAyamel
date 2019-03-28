@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+_command=""
+
+### LOG VARIABLES
+log_service=""
+log_mode=""
+
+### BUILD VARIABLES
 default=""
 attach=""
 remove=""
@@ -22,7 +29,6 @@ test_compose_dir="compose_files/travis"
 compose_file_dir=""
 mode=""
 branchname=""
-exit_code=0
 container=""
 test_object_name=""
 
@@ -34,6 +40,9 @@ dependencies_remotes=(https://github.com/BYU-ODH/yvideojs
         https://github.com/BYU-ODH/EditorWidgets
         https://github.com/BYU-ODH/subtitle-timeline-editor
         https://github.com/BYU-ODH/TimedText)
+
+### SHARED VARIABLES
+exit_code=0
 
 usage () {
     echo 'Optional Params:'
@@ -105,7 +114,43 @@ usage () {
 }
 
 options () {
-    expect_name=""
+    if [[ "$1" == "log" ]]; then
+        shift
+        _command="log"
+        log_options $@
+    else
+        _command="build"
+        build_options $@
+    fi
+}
+
+log_options() {
+    for opt in "$@"; do
+        if [[ "$opt" =~ ^\-s=.*$ ]] || [[ "$opt" =~ ^\-s=.*$ ]];
+        then
+            log_service=${opt##*=}
+
+        elif [[ "$opt" == "-t" ]];
+        then
+            log_mode="test"
+
+        elif [[ "$opt" == "-d" ]];
+        then
+            log_mode="dev"
+
+        elif [[ "$opt" == "-p" ]];
+        then
+            log_mode="prod"
+
+        elif [[ "$opt" == "-b" ]];
+        then
+            log_mode="beta"
+
+        fi
+    done
+}
+
+build_options () {
     for opt in "$@"; do
         if [[ "$opt" == "--default" ]] || [[ "$opt" == "-e" ]];
         then
@@ -205,6 +250,24 @@ options () {
         exit 1
     fi
 }
+
+### LOG FUNCTIONS
+
+log_container () {
+    log_mode=${log_mode:-"dev"}
+    log_service=${log_service:-"yvideo"}
+    container_id=$(get_container_id $log_mode $log_service)
+    if [[ $? -eq 0 ]]; then
+        # redirects stderr to stdout by default so we can pipe the output
+        docker logs $container_id 2>&1
+        exit_code=$?
+    else
+        echo Failed to find container for service: $log_mode"_$log_service"
+        exit_code=1
+    fi
+}
+
+### BUILD FUNCTIONS
 
 ## $1 is the string of services letters: dsvx
 get_services () {
@@ -556,35 +619,43 @@ setup () {
     fi
 }
 
+# Params $1 = mode, $2 = service name
+# Returns a live container id if one exists
+# needs to be rewritten if we scale the services to more than one container
+get_container_id () {
+    _mode=$1
+    _service=$2
+    service_containers=$(docker service ps -q "$_mode"_$_service -f "desired-state=running" 2>/dev/null)
+    if [[ $? -ne 0 ]]; then
+        echo "$_mode"_"$_service not found"
+        exit 1
+    fi
+    OLD_IFS=$IFS
+    IFS=
+    for container in $service_containers; do
+        yvideo_container_id=$(docker inspect --format '{{.Status.ContainerStatus.ContainerID}}' $container)
+        [[ $? -eq 0 ]] && break
+        yvideo_container_id=""
+    done
+    IFS=$OLD_IFS
+    echo $yvideo_container_id
+    exit 0
+}
+
 run_tests_locally () {
-    if [[ "$mode" == "test" ]]; then
-        service_containers=$(docker service ps -q dev_yvideo -f "desired-state=running" 2>/dev/null)
-        if [[ $? -ne 0 ]]; then
-            echo "Please Start the dev stack before attempting to run tests locally:"
-            echo -e "\t$0 -d -s=dv"
-            exit 1
-        fi
-        OLD_IFS=$IFS
-        IFS=
-        for container in $service_containers; do
-            yvideo_container_id=$(docker inspect --format '{{.Status.ContainerStatus.ContainerID}}' $container)
-            [[ $? -eq 0 ]] && break
-            yvideo_container_id=""
-        done
-        IFS=$OLD_IFS
-        if [[ "$yvideo_container_id" != "" ]]; then
-            if [[ -n "$test_object_name" ]]; then
-                test_command="testOnly $test_object_name"
-            else
-                test_command="test"
-            fi
-            # test command needs to be escaped, otherwise, sbt won't get the test_object_name if it is passed in
-            docker exec $yvideo_container_id sbt "$test_command"
-            exit $?
+    yvideo_container_id=$(get_container_id "dev" "yvideo")
+    if [[ "$yvideo_container_id" != "" ]]; then
+        if [[ -n "$test_object_name" ]]; then
+            test_command="testOnly $test_object_name"
         else
-            echo "Running yvideo container not found."
-            exit 1
+            test_command="test"
         fi
+        # test command needs to be escaped, otherwise, sbt won't get the test_object_name if it is passed in
+        docker exec $yvideo_container_id sbt "$test_command"
+        exit $?
+    else
+        echo "Running yvideo container not found."
+        exit 1
     fi
 }
 
@@ -615,19 +686,24 @@ run_travis_tests () {
 
 cd "$scriptpath"
 options "$@"
-[[ -n "$update" ]] && update_services && exit
-[[ -n "$remove" ]] && remove_services && exit
-[[ -n "$clean" ]] && cleanup
-[[ -n "$compose_file_dir" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
-[[ "$mode" == "test" ]] && run_tests_locally
+if [[ "$_command" == "build" ]]; then
+    [[ -n "$update" ]] && update_services && exit
+    [[ -n "$remove" ]] && remove_services && exit
+    [[ -n "$clean" ]] && cleanup
+    [[ -n "$compose_file_dir" ]] && setup && [[ -z "$setup_only" ]] && run_docker_compose
+    [[ "$mode" == "test" ]] && run_tests_locally
 
-if [[ -n "$compose_file_dir" ]] && [[ "$mode" == "travis" ]]; then
-    run_travis_tests
-elif [[ -n "$compose_file_dir" ]]; then
-    start_services
+    if [[ -n "$compose_file_dir" ]] && [[ "$mode" == "travis" ]]; then
+        run_travis_tests
+    elif [[ -n "$compose_file_dir" ]]; then
+        start_services
+    fi
+
+    [[ -n "$super_duper_clean" ]] && cleanup
+
+elif [[ "$_command" == "log" ]]; then
+    log_container
 fi
-
-[[ -n "$super_duper_clean" ]] && cleanup
 # use the docker command exit code rather than whatever the last line may output
 # Travis uses this as a way to detect whether the build failed
 exit $exit_code

@@ -29,6 +29,7 @@ test_compose_dir="compose_files/travis"
 compose_file_dir=""
 mode=""
 branchname=""
+featurebranch=""
 container=""
 test_object_name=""
 
@@ -76,7 +77,12 @@ usage () {
     echo '                                       s -> server'
     echo '                                       v -> video'
     echo '                                       x -> ylex'
+    echo '                                       example: --services=dv # only the database and yvideo will be started'
     echo "          [--tf                   ]    Specify a test object name. Only this object's tests will run"
+    echo '          [--feature=<branchname> ]    Will use the provided branch for yvideo instead of the default.'
+    echo '                                       This is useful for deploying some branch that has a feature we want to test'
+    echo '                                       or for deploying hotfixes.'
+    echo '                                       This flag is only used in the production and beta modes.'
     echo
     echo
     echo 'Required Params (One of the following. The last given option will be used if multiple are provided):'
@@ -232,6 +238,10 @@ build_options () {
         elif [[ "$opt" == "--nr" ]];
         then
             dl_releases=""
+
+        elif [[ "$opt" =~ ^\-\-feature=.*$ ]];
+        then
+            featurebranch=${opt##*=}
 
         elif [[ "$opt" =~ ^\-\-tf=.*$ ]];
             then
@@ -418,7 +428,9 @@ compose_test () {
 # clones the repos into the prod folder
 # $2 is the service mode: production or beta
 compose_production () {
-
+    # Allow deployment of feature branches
+    # if --feature=branchname is not present, the default branch will be deployed
+    yvideo_target_branch=${featurebranch:-1}
     # copy the application.conf file into the context of the dockerfile for yvideo
     # Needs to be copied because:
     # The <src> path must be inside the context of the build;
@@ -427,7 +439,7 @@ compose_production () {
     # https://docs.docker.com/engine/reference/builder/#copy
     if [[ -f "$YVIDEO_CONFIG" ]]; then
         # clone the yvideo master branch into the production folder
-        git clone -b "$1" --depth 1 "$yvideo_remote" docker_contexts/"$2"/yvideo/$(basename $yvideo_remote) &> /dev/null
+        git clone -b "$yvideo_target_branch" --depth 1 "$yvideo_remote" docker_contexts/"$2"/yvideo/$(basename $yvideo_remote) &> /dev/null
         # copy it into the production dockerfile folder
         cp "$YVIDEO_CONFIG" docker_contexts/"$2"/yvideo/application.conf
     else
@@ -450,7 +462,8 @@ compose_production () {
 }
 
 cleanup () {
-    git clean -xdff
+    # remove all untracked files except for deploy.log
+    git clean -xdf -e deploy.log
 }
 
 extract_client() {

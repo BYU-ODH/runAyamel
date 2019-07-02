@@ -430,7 +430,7 @@ compose_test () {
 compose_production () {
     # Allow deployment of feature branches
     # if --feature=branchname is not present, the default branch will be deployed
-    yvideo_target_branch=${featurebranch:-1}
+    yvideo_target_branch=${featurebranch:-$1}
     # copy the application.conf file into the context of the dockerfile for yvideo
     # Needs to be copied because:
     # The <src> path must be inside the context of the build;

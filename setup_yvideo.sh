@@ -463,7 +463,7 @@ compose_production () {
 
 cleanup () {
     # remove all untracked files except for deploy.log
-    git clean -xdf -e deploy.log
+    git clean -xdff -e deploy.log
 }
 
 extract_client() {

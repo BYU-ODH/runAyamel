@@ -1,6 +1,12 @@
 This repository ties the yVideo project together.
 
+#A version of bash >= 4.0 is required for project setup
+*DO NOT PUSH local yvideo_env file changes because it will break production*
+
 Run the prep_env.sh script in order to download all of the needed repositories and to install docker and docker-compose. Currently, only Ubuntu and Fedora are supported when it comes to installing docker/docker-compose.
+
+The prev_env script looks for a GITDIR environment variable where you would like all of the accompanying project to be downloaded to (used for development)
+
 
     usage:$ bash scripts/prep_env.sh <branch>
 
@@ -8,11 +14,25 @@ If the branch argument is present, the code repositories will be downloaded. The
 
 In addition to install docker/docker-compose and downloading the yvideo dependencies, yvideo and yvideo-dict-lookup will need completed application.conf files. Other required files are denoted by the required environment variables output at the bottom of the help text when the command `bash setup_yvideo.sh -h` is run.
 
+1. Make sure that the dB env vars (YVIDEO_SQL & YVIDEO_SQL_DATA) have the correct path to the folders that contain sql database dumps by sourcing it to your bash shell environment 
+2. You need to create the Yvideo sql data directory ie. sql_data
+3. Copy application.conf.dev from yvideo-conf to the yvideo directory's conf folder and rename to application.conf
+4. It might be helpful to change your .bashrc profile to include the YVIDEO_SQL & YVIDEO_SQL_DATA env vars (make sure to change the paths to work with your local setup)
+
 The setup_yvideo.sh script manages all of the docker containers. Generally, the following containers are created:
 
     play application - https://github.com:BYU-ODH/yvideo
     play application - https://github.com:BYU-ODH/yvideo-dict-lookup
     httpd server
     mysql database
+
+Quick start commands:
+docker swarm init
+./setup_yvideo.sh -h (If you need help)
+./setup_yvideo.sh --dev --default --build --services=dv 
+
+How to remove containers:
+./setup_yvideo.sh --dev --remove
+
 
 
